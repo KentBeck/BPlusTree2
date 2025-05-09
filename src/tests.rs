@@ -11,6 +11,35 @@ mod tests {
     }
 
     #[test]
+    fn test_create_with_custom_branching_factor() {
+        let _map = BPlusTreeMap::<i32, String>::with_branching_factor(8);
+        // Just testing that we can create a map with a custom branching factor
+    }
+
+    #[test]
+    #[should_panic(expected = "Branching factor must be at least 2")]
+    fn test_invalid_branching_factor() {
+        let _map = BPlusTreeMap::<i32, String>::with_branching_factor(1);
+        // This should panic because branching factor must be at least 2
+    }
+
+    #[test]
+    fn test_leaf_node_splitting() {
+        // Create a map with a small branching factor
+        let mut map = BPlusTreeMap::<i32, String>::with_branching_factor(3);
+
+        // Insert keys until we trigger a leaf split
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string()); // This should trigger a leaf split
+
+        // Verify all keys are still accessible
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+    }
+
+    #[test]
     fn test_insert_single_key_value_pair() {
         let mut map = BPlusTreeMap::new();
         let old_value = map.insert(1, "one".to_string());
@@ -30,8 +59,8 @@ mod tests {
             values: vec!["four".to_string(), "five".to_string()],
         };
 
-        // Create a tree with a branch node as root
-        let mut map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf);
+        // Create a tree with a branch node as root and a custom branching factor
+        let mut map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(4));
 
         // Insert a value that should go to the left leaf
         let old_value = map.insert(2, "new two".to_string());
