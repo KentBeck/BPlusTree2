@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "BPlusTree2"
+name = "bplus_tree2"
 version = "0.1.0"
