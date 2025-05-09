@@ -9,7 +9,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 ### Basic Structure and Operations
 
 1. ~~Test creating an empty BPlusTreeMap~~ ✓
-2. Test inserting a single key-value pair
+2. ~~Test inserting a single key-value pair~~ ✓
 3. Test retrieving a value by key
 4. Test overwriting an existing key's value
 5. Test removing a key-value pair
