@@ -90,29 +90,42 @@ where
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
         K: std::borrow::Borrow<Q>,
-        Q: Ord + ?Sized,
+        Q: Ord + ?Sized + PartialEq,
     {
         match &self.root {
             None => None,
             Some(tree_node) => match tree_node {
-                TreeNode::Leaf(leaf) => match leaf.keys.binary_search_by(|k| k.borrow().cmp(key)) {
-                    Ok(pos) => Some(&leaf.values[pos]),
-                    Err(_) => None,
-                },
+                TreeNode::Leaf(leaf) => {
+                    // Use position to find the key
+                    let pos = leaf.keys.iter().position(|k| k.borrow() == key);
+                    pos.map(|idx| &leaf.values[idx])
+                }
                 TreeNode::Branch(branch) => {
                     // Find the appropriate child node to search in
-                    let child_index = match branch.keys.binary_search_by(|k| k.borrow().cmp(key)) {
-                        Ok(idx) => idx + 1, // If key exists, go to the right child
-                        Err(idx) => idx, // If key doesn't exist, go to the child at the insertion point
-                    };
+                    // First check if the key is in the branch keys
+                    let mut child_index = 0;
+                    for (idx, k) in branch.keys.iter().enumerate() {
+                        // Compare using PartialEq
+                        if k.borrow() == key {
+                            // If key exists, go to the right child
+                            child_index = idx + 1;
+                            break;
+                        } else if k.borrow().cmp(&key) == std::cmp::Ordering::Greater {
+                            // If key is less than current key, go to the left child
+                            child_index = idx;
+                            break;
+                        } else {
+                            // Continue searching
+                            child_index = idx + 1;
+                        }
+                    }
 
                     if child_index < branch.children.len() {
                         match &branch.children[child_index] {
                             TreeNode::Leaf(leaf) => {
-                                match leaf.keys.binary_search_by(|k| k.borrow().cmp(key)) {
-                                    Ok(pos) => Some(&leaf.values[pos]),
-                                    Err(_) => None,
-                                }
+                                // Use position to find the key
+                                let pos = leaf.keys.iter().position(|k| k.borrow() == key);
+                                pos.map(|idx| &leaf.values[idx])
                             }
                             TreeNode::Branch(_) => {
                                 // For simplicity, we're not handling recursive search into branch nodes yet
