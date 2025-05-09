@@ -9,18 +9,18 @@ Each commit should have all the tests passing. Under no circumstances should you
 ### Basic Structure and Operations
 
 1. ~~Test creating an empty BPlusTreeMap~~ ✓
-2. ~~Test inserting a single key-value pair~~ ✓
-3. ~~Test retrieving a value by key~~ ✓
-4. ~~Test overwriting an existing key's value~~ ✓
-5. ~~Test removing a key-value pair~~ ✓
-6. ~~Test checking if a key exists~~ ✓
-7. ~~Test getting the number of elements (len)~~ ✓
-8. ~~Test checking if the map is empty~~ ✓
+2. Test inserting a single key-value pair
+3. Test retrieving a value by key
+4. Test overwriting an existing key's value
+5. Test removing a key-value pair
+6. Test checking if a key exists
+7. Test getting the number of elements (len)
+8. Test checking if the map is empty
 
 ### Core Collection Traits
 
-9. ~~Test creating a BPlusTreeMap from an iterator (FromIterator)~~ ✓
-10. ~~Test extending a BPlusTreeMap with elements from an iterator (Extend)~~ ✓
+9. Test creating a BPlusTreeMap from an iterator (FromIterator)
+10. Test extending a BPlusTreeMap with elements from an iterator (Extend)
 11. Test converting a BPlusTreeMap into an iterator (IntoIterator)
 12. Test Debug formatting
 13. Test cloning a BPlusTreeMap (Clone)
