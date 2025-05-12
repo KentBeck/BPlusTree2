@@ -14,7 +14,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 4. ~~Test overwriting an existing key's value~~ ✓
 5. ~~Test removing a key-value pair~~ ✓
 6. ~~Test checking if a key exists~~ ✓
-7. Test getting the number of elements (len)
+7. ~~Test getting the number of elements (len)~~ ✓
 8. Test checking if the map is empty
 
 ### Core Collection Traits

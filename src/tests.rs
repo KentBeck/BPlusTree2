@@ -160,4 +160,38 @@ mod tests {
         map.remove(&2);
         assert_eq!(map.contains_key(&2), false);
     }
+
+    #[test]
+    fn test_getting_number_of_elements() {
+        let mut map = BPlusTreeMap::new();
+
+        // Check len of an empty map
+        assert_eq!(map.len(), 0);
+
+        // Insert some key-value pairs and check len
+        map.insert(1, "one".to_string());
+        assert_eq!(map.len(), 1);
+
+        map.insert(2, "two".to_string());
+        assert_eq!(map.len(), 2);
+
+        map.insert(3, "three".to_string());
+        assert_eq!(map.len(), 3);
+
+        // Overwrite an existing key and check len
+        map.insert(2, "new two".to_string());
+        assert_eq!(map.len(), 3); // Length should not change
+
+        // Remove a key and check len
+        map.remove(&1);
+        assert_eq!(map.len(), 2);
+
+        // Remove another key and check len
+        map.remove(&3);
+        assert_eq!(map.len(), 1);
+
+        // Remove the last key and check len
+        map.remove(&2);
+        assert_eq!(map.len(), 0);
+    }
 }

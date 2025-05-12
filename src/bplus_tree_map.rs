@@ -23,6 +23,7 @@ enum Node<K, V> {
 pub struct BPlusTreeMap<K, V> {
     root: Option<Node<K, V>>,
     branching_factor: usize,
+    size: usize,
 }
 
 impl<K, V> BPlusTreeMap<K, V>
@@ -43,6 +44,7 @@ where
         BPlusTreeMap {
             root: None,
             branching_factor,
+            size: 0,
         }
     }
 
@@ -57,18 +59,37 @@ where
             panic!("Branching factor must be at least 2");
         }
 
-        // Use the first key of the right leaf as separator if not provided
-        let separator = separator_key.unwrap_or_else(|| right_leaf.keys[0].clone());
+        // Calculate the size
+        let size = left_leaf.keys.len() + right_leaf.keys.len();
 
+        // Use the first key of the right leaf as separator if not provided
+        let separator = match separator_key {
+            Some(key) => key,
+            None => right_leaf.keys[0].clone(),
+        };
+
+        // Create the branch node
         let branch = BranchNode {
             keys: vec![separator],
             children: vec![Node::Leaf(left_leaf), Node::Leaf(right_leaf)],
         };
 
+        // Create the tree map
         BPlusTreeMap {
             root: Some(Node::Branch(branch)),
             branching_factor,
+            size,
         }
+    }
+
+    /// Returns the number of elements in the map
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
+    /// Returns true if the map is empty
+    pub fn is_empty(&self) -> bool {
+        self.size == 0
     }
 
     /// Inserts a key-value pair into the map
@@ -84,6 +105,7 @@ where
                     values: vec![value],
                 };
                 self.root = Some(Node::Leaf(leaf));
+                self.size = 1;
                 None
             }
             Some(root) => {
@@ -91,6 +113,12 @@ where
                 let (new_root, old_value) =
                     Self::insert_recursive(root, key, value, branching_factor);
                 self.root = Some(new_root);
+
+                // Update size if this is a new key
+                if old_value.is_none() {
+                    self.size += 1;
+                }
+
                 old_value
             }
         }
@@ -228,6 +256,12 @@ where
             Some(root) => {
                 let (new_root, removed_value) = Self::remove_recursive(root, key, branching_factor);
                 self.root = new_root;
+
+                // Update size if a key was removed
+                if removed_value.is_some() {
+                    self.size -= 1;
+                }
+
                 removed_value
             }
         }
