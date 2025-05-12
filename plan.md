@@ -28,7 +28,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 
 ### Map-Specific Traits
 
-15. Test indexing syntax with Index<K>
+15. ~~Test indexing syntax with Index<K>~~ ✓
 
 ### Iterator Methods
 

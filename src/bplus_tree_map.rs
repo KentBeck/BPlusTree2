@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::iter::FromIterator;
+use std::ops::Index;
 use std::vec;
 
 // Node types for the B+ tree
@@ -495,6 +496,20 @@ where
 {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Implement Index for BPlusTreeMap
+impl<K, V, Q> Index<&Q> for BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug + Borrow<Q>,
+    V: Clone + Debug,
+    Q: Ord + ?Sized,
+{
+    type Output = V;
+
+    fn index(&self, key: &Q) -> &Self::Output {
+        self.get(key).expect("no entry found for key")
     }
 }
 

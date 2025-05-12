@@ -525,4 +525,65 @@ mod tests {
         assert_eq!(default_map.len(), new_map.len());
         assert_eq!(default_map.is_empty(), new_map.is_empty());
     }
+
+    #[test]
+    fn test_indexing_syntax_with_index() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Test indexing syntax
+        assert_eq!(&map[&1], "one");
+        assert_eq!(&map[&2], "two");
+        assert_eq!(&map[&3], "three");
+
+        // Test with a more complex key type
+        let mut string_map = BPlusTreeMap::new();
+        string_map.insert("apple".to_string(), 1);
+        string_map.insert("banana".to_string(), 2);
+        string_map.insert("cherry".to_string(), 3);
+
+        // Test indexing syntax with string keys
+        assert_eq!(&string_map[&"apple".to_string()], &1);
+        assert_eq!(&string_map[&"banana".to_string()], &2);
+        assert_eq!(&string_map[&"cherry".to_string()], &3);
+
+        // Test with string slices (using Borrow)
+        assert_eq!(&string_map[&"apple" as &str], &1);
+        assert_eq!(&string_map[&"banana" as &str], &2);
+        assert_eq!(&string_map[&"cherry" as &str], &3);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+
+        // Test indexing syntax with branch node
+        assert_eq!(&branch_map[&1], "one");
+        assert_eq!(&branch_map[&2], "two");
+        assert_eq!(&branch_map[&4], "four");
+        assert_eq!(&branch_map[&5], "five");
+    }
+
+    #[test]
+    #[should_panic(expected = "no entry found for key")]
+    fn test_indexing_with_nonexistent_key() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // This should panic because the key doesn't exist
+        let _ = &map[&3];
+    }
 }
