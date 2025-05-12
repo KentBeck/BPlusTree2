@@ -2,7 +2,9 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::bplus_tree_map::{BPlusTreeMap, BranchNode, Entry, LeafNode, NodeVisitor};
+    use super::super::bplus_tree_map::{
+        BPlusTreeMap, BranchNode, Entry, Iter, Keys, LeafNode, NodeVisitor, Values,
+    };
     use std::iter::FromIterator;
 
     #[test]
@@ -1322,5 +1324,105 @@ mod tests {
                 assert_eq!(map.get(&1), Some(&"modified_one".to_string()));
             }
         }
+    }
+
+    #[test]
+    fn test_common_iterator_abstraction() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(3, "three".to_string());
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Test the iter method with the new Iter type
+        let entries: Vec<(&i32, &String)> = map.iter().collect();
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries[0], (&1, &"one".to_string()));
+        assert_eq!(entries[1], (&2, &"two".to_string()));
+        assert_eq!(entries[2], (&3, &"three".to_string()));
+
+        // Test the keys method with the new Keys type
+        let keys: Vec<&i32> = map.keys().collect();
+        assert_eq!(keys.len(), 3);
+        assert_eq!(keys[0], &1);
+        assert_eq!(keys[1], &2);
+        assert_eq!(keys[2], &3);
+
+        // Test the values method with the new Values type
+        let values: Vec<&String> = map.values().collect();
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[0], &"one".to_string());
+        assert_eq!(values[1], &"two".to_string());
+        assert_eq!(values[2], &"three".to_string());
+
+        // Test the values_mut method with the new ValuesMut type
+        let mut values_mut: Vec<&mut String> = map.values_mut().collect();
+        assert_eq!(values_mut.len(), 3);
+
+        // Modify the values through the mutable references
+        for value in &mut values_mut {
+            **value = format!("modified_{}", value);
+        }
+
+        // Verify that the values were modified
+        assert_eq!(map.get(&1), Some(&"modified_one".to_string()));
+        assert_eq!(map.get(&2), Some(&"modified_two".to_string()));
+        assert_eq!(map.get(&3), Some(&"modified_three".to_string()));
+
+        // Test the into_iter method with the new IntoIter type
+        let map_clone = map.clone();
+        let entries: Vec<(i32, String)> = map_clone.into_iter().collect();
+        assert_eq!(entries.len(), 3);
+
+        // Sort the entries by key for consistent testing
+        let mut sorted_entries = entries.clone();
+        sorted_entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(sorted_entries[0], (1, "modified_one".to_string()));
+        assert_eq!(sorted_entries[1], (2, "modified_two".to_string()));
+        assert_eq!(sorted_entries[2], (3, "modified_three".to_string()));
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        assert_eq!(empty_map.iter().count(), 0);
+        assert_eq!(empty_map.keys().count(), 0);
+        assert_eq!(empty_map.values().count(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+
+        // Test iter
+        let entries: Vec<(&i32, &String)> = branch_map.iter().collect();
+        assert_eq!(entries.len(), 4);
+        assert_eq!(entries[0], (&1, &"one".to_string()));
+        assert_eq!(entries[1], (&2, &"two".to_string()));
+        assert_eq!(entries[2], (&4, &"four".to_string()));
+        assert_eq!(entries[3], (&5, &"five".to_string()));
+
+        // Test keys
+        let keys: Vec<&i32> = branch_map.keys().collect();
+        assert_eq!(keys.len(), 4);
+        assert_eq!(keys[0], &1);
+        assert_eq!(keys[1], &2);
+        assert_eq!(keys[2], &4);
+        assert_eq!(keys[3], &5);
+
+        // Test values
+        let values: Vec<&String> = branch_map.values().collect();
+        assert_eq!(values.len(), 4);
+        assert_eq!(values[0], &"one".to_string());
+        assert_eq!(values[1], &"two".to_string());
+        assert_eq!(values[2], &"four".to_string());
+        assert_eq!(values[3], &"five".to_string());
     }
 }

@@ -419,18 +419,73 @@ where
     }
 }
 
-/// An owning iterator over the entries of a `BPlusTreeMap`.
-pub struct IntoIter<K, V> {
-    // We'll use a simple vector-based approach for now
-    // In a more advanced implementation, we might want to iterate through the tree structure directly
-    entries: vec::IntoIter<(K, V)>,
+/// A common base iterator for all BPlusTreeMap iterators.
+/// This provides a unified way to iterate over the tree's entries.
+pub struct TreeIterator<T> {
+    /// The entries to iterate over
+    entries: Vec<T>,
+    /// The current position in the entries
+    position: usize,
 }
 
-impl<K, V> Iterator for IntoIter<K, V> {
+impl<T> TreeIterator<T> {
+    /// Creates a new TreeIterator with the given entries
+    pub fn new(entries: Vec<T>) -> Self {
+        Self {
+            entries,
+            position: 0,
+        }
+    }
+}
+
+impl<T> Iterator for TreeIterator<T>
+where
+    T: Clone,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.position < self.entries.len() {
+            let item = self.entries[self.position].clone();
+            self.position += 1;
+            Some(item)
+        } else {
+            None
+        }
+    }
+}
+
+/// An owning iterator over the entries of a `BPlusTreeMap`.
+pub struct IntoIter<K, V> {
+    inner: TreeIterator<(K, V)>,
+}
+
+impl<K, V> Iterator for IntoIter<K, V>
+where
+    K: Clone,
+    V: Clone,
+{
     type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.entries.next()
+        self.inner.next()
+    }
+}
+
+/// A reference iterator over the entries of a `BPlusTreeMap`.
+pub struct Iter<'a, K, V> {
+    inner: TreeIterator<(&'a K, &'a V)>,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V>
+where
+    K: 'a,
+    V: 'a,
+{
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
     }
 }
 
@@ -468,6 +523,78 @@ where
     }
 }
 
+/// An iterator over the keys of a `BPlusTreeMap`.
+pub struct Keys<'a, K> {
+    inner: TreeIterator<&'a K>,
+}
+
+impl<'a, K> Iterator for Keys<'a, K>
+where
+    K: 'a + Clone,
+{
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+/// An iterator over the values of a `BPlusTreeMap`.
+pub struct Values<'a, V> {
+    inner: TreeIterator<&'a V>,
+}
+
+impl<'a, V> Iterator for Values<'a, V>
+where
+    V: 'a + Clone,
+{
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+/// A mutable iterator over the values of a `BPlusTreeMap`.
+pub struct ValuesMut<'a, V> {
+    // We can't use TreeIterator for mutable references because they don't implement Clone
+    entries: Vec<&'a mut V>,
+    position: usize,
+}
+
+impl<'a, V> ValuesMut<'a, V> {
+    /// Creates a new ValuesMut with the given entries
+    pub fn new(entries: Vec<&'a mut V>) -> Self {
+        Self {
+            entries,
+            position: 0,
+        }
+    }
+}
+
+impl<'a, V> Iterator for ValuesMut<'a, V>
+where
+    V: 'a,
+{
+    type Item = &'a mut V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.position < self.entries.len() {
+            let position = self.position;
+            self.position += 1;
+
+            // This is safe because we're returning each entry exactly once
+            // and we know the indices are valid
+            unsafe {
+                let value_ptr = self.entries.as_mut_ptr().add(position);
+                Some(&mut *value_ptr)
+            }
+        } else {
+            None
+        }
+    }
+}
+
 impl<K, V> IntoIterator for BPlusTreeMap<K, V>
 where
     K: Ord + Clone + Debug,
@@ -486,7 +613,7 @@ where
         }
 
         IntoIter {
-            entries: entries.into_iter(),
+            inner: TreeIterator::new(entries),
         }
     }
 }
@@ -609,30 +736,44 @@ where
 
     /// Returns an iterator over the key-value pairs of the map.
     /// The iterator yields all key-value pairs in ascending order by key.
-    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> + '_ {
+    pub fn iter(&self) -> Iter<'_, K, V> {
         // Use the visitor pattern to collect references
-        self.collect_refs().into_iter()
+        let entries = self.collect_refs();
+        Iter {
+            inner: TreeIterator::new(entries),
+        }
     }
 
     /// Returns an iterator over the keys of the map.
     /// The iterator yields all keys in ascending order.
-    pub fn keys(&self) -> impl Iterator<Item = &K> + '_ {
-        // Use the iter method and map to extract just the keys
-        self.iter().map(|(k, _)| k)
+    pub fn keys(&self) -> Keys<'_, K> {
+        // Collect all keys from the tree
+        let keys = self.collect_refs().into_iter().map(|(k, _)| k).collect();
+        Keys {
+            inner: TreeIterator::new(keys),
+        }
     }
 
     /// Returns an iterator over the values of the map.
     /// The iterator yields all values in ascending order by key.
-    pub fn values(&self) -> impl Iterator<Item = &V> + '_ {
-        // Use the iter method and map to extract just the values
-        self.iter().map(|(_, v)| v)
+    pub fn values(&self) -> Values<'_, V> {
+        // Collect all values from the tree
+        let values = self.collect_refs().into_iter().map(|(_, v)| v).collect();
+        Values {
+            inner: TreeIterator::new(values),
+        }
     }
 
     /// Returns a mutable iterator over the values of the map.
     /// The iterator yields all values in ascending order by key.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> + '_ {
-        // Use the iter_mut method and map to extract just the mutable values
-        self.iter_mut().map(|(_, v)| v)
+    pub fn values_mut(&mut self) -> ValuesMut<'_, V> {
+        // Collect all mutable values from the tree
+        let values = self
+            .collect_mut_refs()
+            .into_iter()
+            .map(|(_, v)| v)
+            .collect();
+        ValuesMut::new(values)
     }
 
     /// Returns a mutable iterator over the key-value pairs of the map.
