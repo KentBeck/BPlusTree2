@@ -59,3 +59,30 @@ Each commit should have all the tests passing. Under no circumstances should you
 31. Test behavior with very large number of elements
 32. Test with complex key types that implement Ord
 33. Test proper memory management (no leaks)
+34. Test with keys at the boundaries of their range (min/max integers)
+35. Test with keys that have the same hash but are different (hash collision)
+36. Test with empty strings as keys or values
+37. Test with very long keys or values (e.g., large strings)
+38. Test with non-ASCII characters in keys or values
+39. Test with unbalanced trees (many insertions/deletions on one side)
+40. Test with repeated insertions and deletions in the same location
+41. Test with operations that cause multiple node splits or merges
+42. Test with operations that cause root node changes
+43. Test with operations near the branching factor boundary
+44. Test with custom comparators for key ordering
+45. Test with reverse ordering of keys
+46. Test with concurrent access from multiple threads
+47. Test with thread safety and synchronization
+48. Test with serialization and deserialization of the tree
+49. Test with persistence across program restarts
+50. Test with error handling during operations
+51. Test with zero-sized types as keys or values
+52. Test with self-referential structures as values
+53. Test with floating-point numbers as keys (precision issues)
+54. Test with very similar keys that test comparison precision
+55. Test with random access patterns vs sequential access patterns
+56. Test with extremely uneven distribution of keys
+57. Test with pathological insertion orders that cause worst-case behavior
+58. Test with keys that trigger edge cases in the comparison function
+59. Test with operations that hit every code path in node splitting/merging
+60. Test with operations during iteration (modification during traversal)
