@@ -1,5 +1,7 @@
 // Tests for BPlusTreeMap
 
+mod refactor_tests;
+
 #[cfg(test)]
 mod tests {
     use super::super::bplus_tree_map::{

@@ -1,6 +1,7 @@
 // BPlusTreeMap implementation
 
 pub mod bplus_tree_map;
+mod safe_traversal;
 mod tests;
 
 // Re-export the BPlusTreeMap struct for easier access

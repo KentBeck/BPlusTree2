@@ -767,12 +767,12 @@ where
     /// Returns a mutable iterator over the values of the map.
     /// The iterator yields all values in ascending order by key.
     pub fn values_mut(&mut self) -> ValuesMut<'_, V> {
-        // Collect all mutable values from the tree
-        let values = self
-            .collect_mut_refs()
-            .into_iter()
-            .map(|(_, v)| v)
-            .collect();
+        use crate::safe_traversal::SafeValuesMutVisitor;
+
+        // Use the safe visitor to collect mutable values
+        let mut visitor = SafeValuesMutVisitor::new();
+        self.accept_visitor_mut(&mut visitor);
+        let values = <SafeValuesMutVisitor<'_, V> as NodeVisitorMut<K, V>>::result(visitor);
         ValuesMut::new(values)
     }
 
@@ -800,6 +800,21 @@ pub trait NodeVisitor<K, V> {
 
     /// Visit a branch node
     fn visit_branch(&mut self, branch: &BranchNode<K, V>);
+
+    /// Get the accumulated result
+    fn result(self) -> Self::Result;
+}
+
+/// A trait for visiting nodes in a B+ tree with mutable access
+pub trait NodeVisitorMut<K, V> {
+    /// The type of result produced by the visitor
+    type Result;
+
+    /// Visit a leaf node with mutable access
+    fn visit_leaf(&mut self, leaf: &mut LeafNode<K, V>);
+
+    /// Visit a branch node with mutable access
+    fn visit_branch(&mut self, branch: &mut BranchNode<K, V>);
 
     /// Get the accumulated result
     fn result(self) -> Self::Result;
@@ -970,34 +985,27 @@ where
 
     /// Gets a mutable reference to the value in the entry.
     pub fn get_mut(&mut self) -> &mut V {
-        // We need to use unsafe here because we can't borrow self.map mutably twice
-        // This is safe because we're only getting a mutable reference to a single value
-        unsafe {
-            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
-            let entries = (*map_ptr).collect_mut_refs();
-            for (k, v) in entries {
-                if k == self.key {
-                    return v;
-                }
-            }
-            panic!("Key not found in map");
+        use crate::safe_traversal::FindValueMutVisitor;
+
+        // Use the safe visitor to find the value
+        let mut visitor = FindValueMutVisitor::new(&self.key);
+        self.map.accept_visitor_mut(&mut visitor);
+        match <FindValueMutVisitor<'_, V, K> as NodeVisitorMut<K, V>>::result(visitor) {
+            Some(value) => value,
+            None => panic!("Key not found in map"),
         }
     }
 
     /// Converts the entry into a mutable reference to its value.
     pub fn into_mut(self) -> &'a mut V {
-        // We need to use unsafe here because we can't borrow self.map mutably twice
-        // This is safe because we're only getting a mutable reference to a single value
-        unsafe {
-            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
-            let entries = (*map_ptr).collect_mut_refs();
-            for (k, v) in entries {
-                if k == self.key {
-                    return v;
-                }
+        // We need to use the collect_mut_refs method which already handles lifetimes correctly
+        let entries = self.map.collect_mut_refs();
+        for (k, v) in entries {
+            if k == self.key {
+                return v;
             }
-            panic!("Key not found in map");
         }
+        panic!("Key not found in map");
     }
 
     /// Sets the value of the entry with the key already in the map.
@@ -1028,18 +1036,15 @@ where
     /// and returns a mutable reference to it.
     pub fn insert(self, value: V) -> &'a mut V {
         self.map.insert(self.key.clone(), value);
-        // We need to use unsafe here because we can't borrow self.map mutably twice
-        // This is safe because we're only getting a mutable reference to a single value
-        unsafe {
-            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
-            let entries = (*map_ptr).collect_mut_refs();
-            for (k, v) in entries {
-                if k == self.key {
-                    return v;
-                }
+
+        // We need to use the collect_mut_refs method which already handles lifetimes correctly
+        let entries = self.map.collect_mut_refs();
+        for (k, v) in entries {
+            if k == self.key {
+                return v;
             }
-            panic!("Key not found in map after insertion");
         }
+        panic!("Key not found in map after insertion");
     }
 }
 
@@ -1087,41 +1092,13 @@ where
 
     /// Collects mutable references to values with cloned keys from the tree
     pub fn collect_mut_refs<'a>(&'a mut self) -> Vec<(K, &'a mut V)> {
-        let mut entries = Vec::new();
-        if let Some(root) = &mut self.root {
-            Self::collect_mut_refs_from_node(root, &mut entries);
-        }
+        use crate::safe_traversal::SafeMutableVisitor;
+
+        let mut visitor = SafeMutableVisitor::new();
+        self.accept_visitor_mut(&mut visitor);
+        let mut entries = visitor.result();
         entries.sort_by(|a, b| a.0.cmp(&b.0));
         entries
-    }
-
-    /// Recursively collects mutable references to values with cloned keys from a node
-    fn collect_mut_refs_from_node<'a>(node: &'a mut Node<K, V>, entries: &mut Vec<(K, &'a mut V)>) {
-        match node {
-            Node::Leaf(leaf) => {
-                // We need to handle this differently to avoid multiple mutable borrows
-                let keys_len = leaf.keys.len();
-
-                // Clone all keys first
-                let keys: Vec<K> = leaf.keys.iter().cloned().collect();
-
-                // Then get mutable references to values one by one
-                for i in 0..keys_len {
-                    // This is safe because we're accessing each index exactly once
-                    // and we know the indices are valid
-                    unsafe {
-                        let value_ptr = leaf.values.as_mut_ptr().add(i);
-                        entries.push((keys[i].clone(), &mut *value_ptr));
-                    }
-                }
-            }
-            Node::Branch(branch) => {
-                // Recursively process all children
-                for child in &mut branch.children {
-                    Self::collect_mut_refs_from_node(child, entries);
-                }
-            }
-        }
     }
 
     /// Accepts a visitor and traverses the tree
@@ -1135,6 +1112,16 @@ where
     pub fn accept_mut<'a, Visitor: NodeVisitor<K, V>>(&'a mut self, visitor: &mut Visitor) {
         if let Some(root) = &mut self.root {
             Self::accept_node_mut(root, visitor);
+        }
+    }
+
+    /// Accepts a visitor with mutable access to nodes and traverses the tree
+    pub fn accept_visitor_mut<'a, Visitor: NodeVisitorMut<K, V>>(
+        &'a mut self,
+        visitor: &mut Visitor,
+    ) {
+        if let Some(root) = &mut self.root {
+            Self::accept_node_visitor_mut(root, visitor);
         }
     }
 
@@ -1168,6 +1155,25 @@ where
                 // Recursively process all children
                 for child in &mut branch.children {
                     Self::accept_node_mut(child, visitor);
+                }
+            }
+        }
+    }
+
+    /// Recursively traverses a node and applies the visitor with mutable access to nodes
+    fn accept_node_visitor_mut<'a, Visitor: NodeVisitorMut<K, V>>(
+        node: &'a mut Node<K, V>,
+        visitor: &mut Visitor,
+    ) {
+        match node {
+            Node::Leaf(leaf) => {
+                visitor.visit_leaf(leaf);
+            }
+            Node::Branch(branch) => {
+                visitor.visit_branch(branch);
+                // Recursively process all children
+                for child in &mut branch.children {
+                    Self::accept_node_visitor_mut(child, visitor);
                 }
             }
         }
