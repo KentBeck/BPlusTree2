@@ -93,4 +93,45 @@ mod tests {
         let old_value = map.insert(6, "six".to_string());
         assert_eq!(old_value, None); // Should be a new insertion
     }
+
+    #[test]
+    fn test_overwriting_existing_key_value() {
+        let mut map = BPlusTreeMap::new();
+
+        // Insert a key-value pair
+        let old_value = map.insert(1, "one".to_string());
+        assert_eq!(old_value, None);
+
+        // Overwrite the existing key with a new value
+        let old_value = map.insert(1, "new one".to_string());
+        assert_eq!(old_value, Some("one".to_string()));
+
+        // Verify the new value is accessible
+        assert_eq!(map.get(&1), Some(&"new one".to_string()));
+    }
+
+    #[test]
+    fn test_removing_key_value_pair() {
+        let mut map = BPlusTreeMap::new();
+
+        // Insert some key-value pairs
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Remove a key-value pair
+        let removed_value = map.remove(&2);
+        assert_eq!(removed_value, Some("two".to_string()));
+
+        // Verify the key is no longer in the map
+        assert_eq!(map.get(&2), None);
+
+        // Verify other keys are still accessible
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+
+        // Try to remove a non-existent key
+        let removed_value = map.remove(&4);
+        assert_eq!(removed_value, None);
+    }
 }
