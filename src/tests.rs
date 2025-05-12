@@ -586,4 +586,75 @@ mod tests {
         // This should panic because the key doesn't exist
         let _ = &map[&3];
     }
+
+    #[test]
+    fn test_iterating_over_key_value_pairs() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(3, "three".to_string());
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Collect the iterator into a vector for easier testing
+        let entries: Vec<(&i32, &String)> = map.iter().collect();
+
+        // Check that all entries are present
+        assert_eq!(entries.len(), 3);
+
+        // Check that entries are in ascending order by key
+        assert_eq!(entries[0], (&1, &"one".to_string()));
+        assert_eq!(entries[1], (&2, &"two".to_string()));
+        assert_eq!(entries[2], (&3, &"three".to_string()));
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let empty_entries: Vec<(&i32, &String)> = empty_map.iter().collect();
+        assert_eq!(empty_entries.len(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let branch_entries: Vec<(&i32, &String)> = branch_map.iter().collect();
+
+        // Check that all entries are present
+        assert_eq!(branch_entries.len(), 4);
+
+        // Check that entries are in ascending order by key
+        assert_eq!(branch_entries[0], (&1, &"one".to_string()));
+        assert_eq!(branch_entries[1], (&2, &"two".to_string()));
+        assert_eq!(branch_entries[2], (&4, &"four".to_string()));
+        assert_eq!(branch_entries[3], (&5, &"five".to_string()));
+
+        // Test that the iterator can be used multiple times
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // First iteration
+        let mut count = 0;
+        for (k, v) in map.iter() {
+            count += 1;
+            assert!(k == &1 || k == &2);
+            assert!(v == &"one".to_string() || v == &"two".to_string());
+        }
+        assert_eq!(count, 2);
+
+        // Second iteration
+        let mut count = 0;
+        for (k, v) in map.iter() {
+            count += 1;
+            assert!(k == &1 || k == &2);
+            assert!(v == &"one".to_string() || v == &"two".to_string());
+        }
+        assert_eq!(count, 2);
+    }
 }
