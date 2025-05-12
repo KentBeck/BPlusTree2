@@ -367,4 +367,56 @@ mod tests {
         assert_eq!(sorted_branch_entries[2], (4, "four".to_string()));
         assert_eq!(sorted_branch_entries[3], (5, "five".to_string()));
     }
+
+    #[test]
+    fn test_debug_formatting() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Format the map using Debug
+        let debug_str = format!("{:?}", map);
+
+        // Check that the debug string contains all key-value pairs
+        // The exact format may vary, but it should contain all keys and values
+        assert!(debug_str.contains("1"));
+        assert!(debug_str.contains("one"));
+        assert!(debug_str.contains("2"));
+        assert!(debug_str.contains("two"));
+        assert!(debug_str.contains("3"));
+        assert!(debug_str.contains("three"));
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let empty_debug_str = format!("{:?}", empty_map);
+
+        // Empty map should be formatted as "{}"
+        assert_eq!(empty_debug_str, "{}");
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let branch_debug_str = format!("{:?}", branch_map);
+
+        // Check that the debug string contains all key-value pairs
+        assert!(branch_debug_str.contains("1"));
+        assert!(branch_debug_str.contains("one"));
+        assert!(branch_debug_str.contains("2"));
+        assert!(branch_debug_str.contains("two"));
+        assert!(branch_debug_str.contains("4"));
+        assert!(branch_debug_str.contains("four"));
+        assert!(branch_debug_str.contains("5"));
+        assert!(branch_debug_str.contains("five"));
+    }
 }
