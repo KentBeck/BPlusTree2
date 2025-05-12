@@ -264,4 +264,46 @@ mod tests {
         assert_eq!(duplicate_map.get(&1), Some(&"new one".to_string()));
         assert_eq!(duplicate_map.get(&2), Some(&"two".to_string()));
     }
+
+    #[test]
+    fn test_extending_bplus_tree_map_with_iterator() {
+        // Create an initial map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Check initial state
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+
+        // Create a vector of additional key-value pairs
+        let additional_pairs = vec![(3, "three".to_string()), (4, "four".to_string())];
+
+        // Extend the map with the iterator
+        map.extend(additional_pairs);
+
+        // Check that the map has been extended correctly
+        assert_eq!(map.len(), 4);
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+        assert_eq!(map.get(&4), Some(&"four".to_string()));
+
+        // Test extending with an empty iterator
+        let empty_pairs: Vec<(i32, String)> = Vec::new();
+        map.extend(empty_pairs);
+
+        // Check that the map remains unchanged
+        assert_eq!(map.len(), 4);
+
+        // Test extending with pairs that have duplicate keys (should overwrite existing values)
+        let duplicate_pairs = vec![(2, "new two".to_string()), (5, "five".to_string())];
+        map.extend(duplicate_pairs);
+
+        // Check that the map has been updated correctly
+        assert_eq!(map.len(), 5);
+        assert_eq!(map.get(&2), Some(&"new two".to_string())); // Value should be updated
+        assert_eq!(map.get(&5), Some(&"five".to_string())); // New key-value pair should be added
+    }
 }

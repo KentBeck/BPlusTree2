@@ -358,3 +358,15 @@ where
         map
     }
 }
+
+impl<K, V> Extend<(K, V)> for BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
+        for (k, v) in iter {
+            self.insert(k, v);
+        }
+    }
+}
