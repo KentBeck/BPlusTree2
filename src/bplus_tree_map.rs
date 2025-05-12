@@ -596,6 +596,17 @@ where
     K: Ord + Clone + Debug,
     V: Clone + Debug,
 {
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    /// This method provides a more efficient way to manipulate entries in the map
+    /// without having to do multiple lookups.
+    pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
+        if self.contains_key(&key) {
+            Entry::Occupied(OccupiedEntry { map: self, key })
+        } else {
+            Entry::Vacant(VacantEntry { map: self, key })
+        }
+    }
+
     /// Returns an iterator over the key-value pairs of the map.
     /// The iterator yields all key-value pairs in ascending order by key.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> + '_ {
@@ -699,6 +710,195 @@ where
 
     fn result(self) -> Self::Result {
         self.results
+    }
+}
+
+/// An entry in a `BPlusTreeMap`. It is part of the map API and can be used to
+/// manipulate the map without having to do multiple lookups.
+pub enum Entry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// An occupied entry.
+    Occupied(OccupiedEntry<'a, K, V>),
+    /// A vacant entry.
+    Vacant(VacantEntry<'a, K, V>),
+}
+
+/// A view into an occupied entry in a `BPlusTreeMap`.
+/// It is part of the Entry API.
+pub struct OccupiedEntry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// The map this entry belongs to
+    map: &'a mut BPlusTreeMap<K, V>,
+    /// The key for this entry
+    key: K,
+}
+
+/// A view into a vacant entry in a `BPlusTreeMap`.
+/// It is part of the Entry API.
+pub struct VacantEntry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// The map this entry belongs to
+    map: &'a mut BPlusTreeMap<K, V>,
+    /// The key for this entry
+    key: K,
+}
+
+impl<'a, K, V> Entry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// Ensures a value is in the entry by inserting the default if empty, and returns
+    /// a mutable reference to the value in the entry.
+    pub fn or_insert(self, default: V) -> &'a mut V {
+        match self {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting the result of the default function if empty,
+    /// and returns a mutable reference to the value in the entry.
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+        match self {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => entry.insert(default()),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion.
+    pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
+        match self {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                let value = default(entry.key());
+                entry.insert(value)
+            }
+        }
+    }
+
+    /// Returns a reference to this entry's key.
+    pub fn key(&self) -> &K {
+        match self {
+            Entry::Occupied(entry) => entry.key(),
+            Entry::Vacant(entry) => entry.key(),
+        }
+    }
+
+    /// Provides in-place mutable access to an occupied entry before any
+    /// potential inserts into the map.
+    pub fn and_modify<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&mut V),
+    {
+        match self {
+            Entry::Occupied(mut entry) => {
+                f(entry.get_mut());
+                Entry::Occupied(entry)
+            }
+            Entry::Vacant(entry) => Entry::Vacant(entry),
+        }
+    }
+}
+
+impl<'a, K, V> OccupiedEntry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// Gets a reference to the key in the entry.
+    pub fn key(&self) -> &K {
+        &self.key
+    }
+
+    /// Gets a reference to the value in the entry.
+    pub fn get(&self) -> &V {
+        // We know the key exists, so unwrap is safe
+        self.map.get(&self.key).unwrap()
+    }
+
+    /// Gets a mutable reference to the value in the entry.
+    pub fn get_mut(&mut self) -> &mut V {
+        // We need to use unsafe here because we can't borrow self.map mutably twice
+        // This is safe because we're only getting a mutable reference to a single value
+        unsafe {
+            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
+            let entries = (*map_ptr).collect_mut_refs();
+            for (k, v) in entries {
+                if k == self.key {
+                    return v;
+                }
+            }
+            panic!("Key not found in map");
+        }
+    }
+
+    /// Converts the entry into a mutable reference to its value.
+    pub fn into_mut(self) -> &'a mut V {
+        // We need to use unsafe here because we can't borrow self.map mutably twice
+        // This is safe because we're only getting a mutable reference to a single value
+        unsafe {
+            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
+            let entries = (*map_ptr).collect_mut_refs();
+            for (k, v) in entries {
+                if k == self.key {
+                    return v;
+                }
+            }
+            panic!("Key not found in map");
+        }
+    }
+
+    /// Sets the value of the entry with the key already in the map.
+    pub fn insert(&mut self, value: V) -> V {
+        // We know the key exists, so unwrap is safe
+        std::mem::replace(self.get_mut(), value)
+    }
+
+    /// Takes the value out of the entry, and returns it.
+    pub fn remove(self) -> V {
+        // We know the key exists, so unwrap is safe
+        self.map.remove(&self.key).unwrap()
+    }
+}
+
+impl<'a, K, V> VacantEntry<'a, K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// Gets a reference to the key that would be used when inserting a value
+    /// through the `VacantEntry`.
+    pub fn key(&self) -> &K {
+        &self.key
+    }
+
+    /// Sets the value of the entry with the `VacantEntry`'s key,
+    /// and returns a mutable reference to it.
+    pub fn insert(self, value: V) -> &'a mut V {
+        self.map.insert(self.key.clone(), value);
+        // We need to use unsafe here because we can't borrow self.map mutably twice
+        // This is safe because we're only getting a mutable reference to a single value
+        unsafe {
+            let map_ptr = self.map as *mut BPlusTreeMap<K, V>;
+            let entries = (*map_ptr).collect_mut_refs();
+            for (k, v) in entries {
+                if k == self.key {
+                    return v;
+                }
+            }
+            panic!("Key not found in map after insertion");
+        }
     }
 }
 

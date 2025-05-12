@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::bplus_tree_map::{BPlusTreeMap, BranchNode, LeafNode, NodeVisitor};
+    use super::super::bplus_tree_map::{BPlusTreeMap, BranchNode, Entry, LeafNode, NodeVisitor};
     use std::iter::FromIterator;
 
     #[test]
@@ -1213,5 +1213,114 @@ mod tests {
         assert!(transformed_values.contains(&"transformed_one".to_string()));
         assert!(transformed_values.contains(&"transformed_two".to_string()));
         assert!(transformed_values.contains(&"transformed_three".to_string()));
+    }
+
+    #[test]
+    fn test_entry_api() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Test or_insert with an existing key
+        let entry = map.entry(1);
+        let value = entry.or_insert("default".to_string());
+        *value = "modified_one".to_string();
+        assert_eq!(map.get(&1), Some(&"modified_one".to_string()));
+
+        // Test or_insert with a new key
+        let entry = map.entry(3);
+        let _value = entry.or_insert("three".to_string());
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+
+        // Test or_insert_with with an existing key
+        let entry = map.entry(2);
+        let value = entry.or_insert_with(|| "default".to_string());
+        *value = "modified_two".to_string();
+        assert_eq!(map.get(&2), Some(&"modified_two".to_string()));
+
+        // Test or_insert_with with a new key
+        let entry = map.entry(4);
+        let _value = entry.or_insert_with(|| "four".to_string());
+        assert_eq!(map.get(&4), Some(&"four".to_string()));
+
+        // Test or_insert_with_key with an existing key
+        let entry = map.entry(1);
+        let _value = entry.or_insert_with_key(|k| format!("key_{}", k));
+        assert_eq!(map.get(&1), Some(&"modified_one".to_string())); // Value should not change
+
+        // Test or_insert_with_key with a new key
+        let entry = map.entry(5);
+        let _value = entry.or_insert_with_key(|k| format!("key_{}", k));
+        assert_eq!(map.get(&5), Some(&"key_5".to_string()));
+
+        // Test and_modify with an existing key
+        let entry = map.entry(1);
+        let _value = entry
+            .and_modify(|v| *v = format!("modified_{}", v))
+            .or_insert("default".to_string());
+        assert_eq!(map.get(&1), Some(&"modified_modified_one".to_string()));
+
+        // Test and_modify with a new key
+        let entry = map.entry(6);
+        let _value = entry
+            .and_modify(|v| *v = format!("modified_{}", v))
+            .or_insert("six".to_string());
+        assert_eq!(map.get(&6), Some(&"six".to_string())); // and_modify should not be called
+
+        // Test OccupiedEntry methods
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+
+        // Test get and get_mut
+        match map.entry(1) {
+            Entry::Occupied(mut entry) => {
+                assert_eq!(entry.get(), &"one".to_string());
+                *entry.get_mut() = "modified_one".to_string();
+                assert_eq!(entry.get(), &"modified_one".to_string());
+            }
+            Entry::Vacant(_) => panic!("Expected Occupied entry"),
+        }
+
+        // Test insert
+        match map.entry(1) {
+            Entry::Occupied(mut entry) => {
+                let old_value = entry.insert("new_one".to_string());
+                assert_eq!(old_value, "modified_one".to_string());
+                assert_eq!(entry.get(), &"new_one".to_string());
+            }
+            Entry::Vacant(_) => panic!("Expected Occupied entry"),
+        }
+
+        // Test remove
+        match map.entry(1) {
+            Entry::Occupied(entry) => {
+                let value = entry.remove();
+                assert_eq!(value, "new_one".to_string());
+                assert_eq!(map.get(&1), None);
+            }
+            Entry::Vacant(_) => panic!("Expected Occupied entry"),
+        }
+
+        // Test VacantEntry methods
+        let mut map = BPlusTreeMap::new();
+
+        // Test key
+        match map.entry(1) {
+            Entry::Occupied(_) => panic!("Expected Vacant entry"),
+            Entry::Vacant(entry) => {
+                assert_eq!(entry.key(), &1);
+            }
+        }
+
+        // Test insert
+        match map.entry(1) {
+            Entry::Occupied(_) => panic!("Expected Vacant entry"),
+            Entry::Vacant(entry) => {
+                let value = entry.insert("one".to_string());
+                *value = "modified_one".to_string();
+                assert_eq!(map.get(&1), Some(&"modified_one".to_string()));
+            }
+        }
     }
 }
