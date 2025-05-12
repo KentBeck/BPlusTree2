@@ -599,20 +599,8 @@ where
     /// Returns an iterator over the key-value pairs of the map.
     /// The iterator yields all key-value pairs in ascending order by key.
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> + '_ {
-        // For simplicity, we'll just collect all entries into a vector
-        // and then create an iterator over the references.
-        // In a real implementation, we would iterate through the tree directly.
-        let mut entries = Vec::new();
-
-        if let Some(root) = &self.root {
-            Self::collect_entries_for_iter(root, &mut entries);
-        }
-
-        // Sort entries by key for consistent iteration order
-        entries.sort_by(|a, b| a.0.cmp(b.0));
-
-        // Return an iterator over the entries
-        entries.into_iter()
+        // Use the visitor pattern to collect references
+        self.collect_refs().into_iter()
     }
 
     /// Returns an iterator over the keys of the map.
@@ -639,16 +627,8 @@ where
     /// Returns a mutable iterator over the key-value pairs of the map.
     /// The iterator yields all key-value pairs in ascending order by key.
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        // Create a new mutable iterator
-        let mut entries = Vec::new();
-
-        // Collect all entries from the tree
-        if let Some(root) = &mut self.root {
-            Self::collect_entries_for_iter_mut(root, &mut entries);
-        }
-
-        // Sort entries by key for consistent iteration order
-        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        // Use the visitor pattern to collect mutable references
+        let entries = self.collect_mut_refs();
 
         // Return the iterator
         IterMut {
@@ -656,12 +636,126 @@ where
             position: 0,
         }
     }
+}
 
-    /// Helper method to collect entries for the iter_mut method
-    fn collect_entries_for_iter_mut<'a>(
-        node: &'a mut Node<K, V>,
-        entries: &mut Vec<(K, &'a mut V)>,
-    ) {
+/// A trait for visiting nodes in a B+ tree
+pub trait NodeVisitor<K, V> {
+    /// The type of result produced by the visitor
+    type Result;
+
+    /// Visit a leaf node
+    fn visit_leaf(&mut self, leaf: &LeafNode<K, V>);
+
+    /// Visit a branch node
+    fn visit_branch(&mut self, branch: &BranchNode<K, V>);
+
+    /// Get the accumulated result
+    fn result(self) -> Self::Result;
+}
+
+/// A visitor that collects key-value pairs with a transformation function
+pub struct CollectingVisitor<K, V, F, R>
+where
+    F: Fn(&K, &V) -> R,
+{
+    visitor_fn: F,
+    results: Vec<R>,
+    _phantom: std::marker::PhantomData<(K, V)>,
+}
+
+impl<K, V, F, R> CollectingVisitor<K, V, F, R>
+where
+    F: Fn(&K, &V) -> R,
+{
+    /// Create a new collecting visitor with the given transformation function
+    pub fn new(visitor_fn: F) -> Self {
+        Self {
+            visitor_fn,
+            results: Vec::new(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<K, V, F, R> NodeVisitor<K, V> for CollectingVisitor<K, V, F, R>
+where
+    F: Fn(&K, &V) -> R,
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    type Result = Vec<R>;
+
+    fn visit_leaf(&mut self, leaf: &LeafNode<K, V>) {
+        // Process all entries in this leaf node
+        for i in 0..leaf.keys.len() {
+            self.results
+                .push((self.visitor_fn)(&leaf.keys[i], &leaf.values[i]));
+        }
+    }
+
+    fn visit_branch(&mut self, _branch: &BranchNode<K, V>) {
+        // No direct processing for branch nodes in this visitor
+    }
+
+    fn result(self) -> Self::Result {
+        self.results
+    }
+}
+
+// Tree traversal and helper methods
+impl<K, V> BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    /// Creates an empty leaf node
+    fn create_empty_leaf() -> LeafNode<K, V> {
+        LeafNode {
+            keys: Vec::new(),
+            values: Vec::new(),
+        }
+    }
+
+    /// Collects references to key-value pairs from the tree
+    pub fn collect_refs<'a>(&'a self) -> Vec<(&'a K, &'a V)> {
+        let mut entries = Vec::new();
+        if let Some(root) = &self.root {
+            Self::collect_refs_from_node(root, &mut entries);
+        }
+        entries.sort_by(|a, b| a.0.cmp(b.0));
+        entries
+    }
+
+    /// Recursively collects references to key-value pairs from a node
+    fn collect_refs_from_node<'a>(node: &'a Node<K, V>, entries: &mut Vec<(&'a K, &'a V)>) {
+        match node {
+            Node::Leaf(leaf) => {
+                // Add all entries from this leaf node
+                for i in 0..leaf.keys.len() {
+                    entries.push((&leaf.keys[i], &leaf.values[i]));
+                }
+            }
+            Node::Branch(branch) => {
+                // Recursively process all children
+                for child in &branch.children {
+                    Self::collect_refs_from_node(child, entries);
+                }
+            }
+        }
+    }
+
+    /// Collects mutable references to values with cloned keys from the tree
+    pub fn collect_mut_refs<'a>(&'a mut self) -> Vec<(K, &'a mut V)> {
+        let mut entries = Vec::new();
+        if let Some(root) = &mut self.root {
+            Self::collect_mut_refs_from_node(root, &mut entries);
+        }
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        entries
+    }
+
+    /// Recursively collects mutable references to values with cloned keys from a node
+    fn collect_mut_refs_from_node<'a>(node: &'a mut Node<K, V>, entries: &mut Vec<(K, &'a mut V)>) {
         match node {
             Node::Leaf(leaf) => {
                 // We need to handle this differently to avoid multiple mutable borrows
@@ -681,81 +775,72 @@ where
                 }
             }
             Node::Branch(branch) => {
-                // Recursively collect entries from all children
+                // Recursively process all children
                 for child in &mut branch.children {
-                    Self::collect_entries_for_iter_mut(child, entries);
+                    Self::collect_mut_refs_from_node(child, entries);
                 }
             }
         }
     }
 
-    /// Helper method to collect entries for the iter method
-    fn collect_entries_for_iter<'a>(node: &'a Node<K, V>, entries: &mut Vec<(&'a K, &'a V)>) {
+    /// Accepts a visitor and traverses the tree
+    pub fn accept<Visitor: NodeVisitor<K, V>>(&self, visitor: &mut Visitor) {
+        if let Some(root) = &self.root {
+            Self::accept_node(root, visitor);
+        }
+    }
+
+    /// Accepts a visitor and traverses the tree with mutable access
+    pub fn accept_mut<'a, Visitor: NodeVisitor<K, V>>(&'a mut self, visitor: &mut Visitor) {
+        if let Some(root) = &mut self.root {
+            Self::accept_node_mut(root, visitor);
+        }
+    }
+
+    /// Recursively traverses a node and applies the visitor
+    fn accept_node<Visitor: NodeVisitor<K, V>>(node: &Node<K, V>, visitor: &mut Visitor) {
         match node {
             Node::Leaf(leaf) => {
-                // Add all entries from this leaf node
-                for i in 0..leaf.keys.len() {
-                    entries.push((&leaf.keys[i], &leaf.values[i]));
-                }
+                visitor.visit_leaf(leaf);
             }
             Node::Branch(branch) => {
-                // Recursively collect entries from all children
+                visitor.visit_branch(branch);
+                // Recursively process all children
                 for child in &branch.children {
-                    Self::collect_entries_for_iter(child, entries);
+                    Self::accept_node(child, visitor);
                 }
             }
         }
     }
-}
 
-// Tree traversal and helper methods
-impl<K, V> BPlusTreeMap<K, V>
-where
-    K: Ord + Clone + Debug,
-    V: Clone + Debug,
-{
-    /// Creates an empty leaf node
-    fn create_empty_leaf() -> LeafNode<K, V> {
-        LeafNode {
-            keys: Vec::new(),
-            values: Vec::new(),
+    /// Recursively traverses a node and applies the visitor with mutable access
+    fn accept_node_mut<'a, Visitor: NodeVisitor<K, V>>(
+        node: &'a mut Node<K, V>,
+        visitor: &mut Visitor,
+    ) {
+        match node {
+            Node::Leaf(leaf) => {
+                visitor.visit_leaf(leaf);
+            }
+            Node::Branch(branch) => {
+                visitor.visit_branch(branch);
+                // Recursively process all children
+                for child in &mut branch.children {
+                    Self::accept_node_mut(child, visitor);
+                }
+            }
         }
     }
 
     /// Traverses the tree and applies the visitor function to each key-value pair
     /// The visitor function can transform the key-value pairs and collect them
-    fn traverse<F, R>(&self, visitor: F) -> Vec<R>
+    fn traverse<F, R>(&self, visitor_fn: F) -> Vec<R>
     where
         F: Fn(&K, &V) -> R,
     {
-        let mut results = Vec::new();
-
-        if let Some(root) = &self.root {
-            Self::traverse_node(root, &mut results, &visitor);
-        }
-
-        results
-    }
-
-    /// Recursively traverses a node and applies the visitor function to each key-value pair
-    fn traverse_node<F, R>(node: &Node<K, V>, results: &mut Vec<R>, visitor: &F)
-    where
-        F: Fn(&K, &V) -> R,
-    {
-        match node {
-            Node::Leaf(leaf) => {
-                // Process all entries in this leaf node
-                for i in 0..leaf.keys.len() {
-                    results.push(visitor(&leaf.keys[i], &leaf.values[i]));
-                }
-            }
-            Node::Branch(branch) => {
-                // Recursively process all children
-                for child in &branch.children {
-                    Self::traverse_node(child, results, visitor);
-                }
-            }
-        }
+        let mut visitor = CollectingVisitor::new(visitor_fn);
+        self.accept(&mut visitor);
+        visitor.result()
     }
 
     /// Finds a leaf node that might contain the given key

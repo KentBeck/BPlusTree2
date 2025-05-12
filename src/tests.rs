@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::bplus_tree_map::{BPlusTreeMap, LeafNode};
+    use super::super::bplus_tree_map::{BPlusTreeMap, BranchNode, LeafNode, NodeVisitor};
     use std::iter::FromIterator;
 
     #[test]
@@ -1102,5 +1102,116 @@ mod tests {
         assert_eq!(string_map.get(&1), Some(&"one_modified".to_string()));
         assert_eq!(string_map.get(&2), Some(&"two_modified".to_string()));
         assert_eq!(string_map.get(&3), Some(&"three_modified".to_string()));
+    }
+
+    #[test]
+    fn test_node_visitor_pattern() {
+        // Create a custom visitor that counts the number of keys
+        struct KeyCounter {
+            count: usize,
+        }
+
+        impl NodeVisitor<i32, String> for KeyCounter {
+            type Result = usize;
+
+            fn visit_leaf(&mut self, leaf: &LeafNode<i32, String>) {
+                self.count += leaf.keys.len();
+            }
+
+            fn visit_branch(&mut self, _branch: &BranchNode<i32, String>) {
+                // No keys to count in branch nodes (we only count keys in leaf nodes)
+            }
+
+            fn result(self) -> Self::Result {
+                self.count
+            }
+        }
+
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(3, "three".to_string());
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Use the visitor to count keys
+        let mut visitor = KeyCounter { count: 0 };
+        map.accept(&mut visitor);
+        assert_eq!(visitor.result(), 3);
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let mut visitor = KeyCounter { count: 0 };
+        empty_map.accept(&mut visitor);
+        assert_eq!(visitor.result(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let mut visitor = KeyCounter { count: 0 };
+        branch_map.accept(&mut visitor);
+        assert_eq!(visitor.result(), 4); // 2 keys in left leaf + 2 keys in right leaf
+
+        // Test with a multi-level tree
+        let mut multi_level_map = BPlusTreeMap::with_branching_factor(3);
+        for i in 1..=10 {
+            multi_level_map.insert(i, format!("value_{}", i));
+        }
+
+        let mut visitor = KeyCounter { count: 0 };
+        multi_level_map.accept(&mut visitor);
+        assert_eq!(visitor.result(), 10);
+
+        // Create a custom visitor that transforms values
+        struct ValueTransformer<F>
+        where
+            F: Fn(&String) -> String,
+        {
+            transform_fn: F,
+            transformed_values: Vec<String>,
+        }
+
+        impl<F> NodeVisitor<i32, String> for ValueTransformer<F>
+        where
+            F: Fn(&String) -> String,
+        {
+            type Result = Vec<String>;
+
+            fn visit_leaf(&mut self, leaf: &LeafNode<i32, String>) {
+                for value in &leaf.values {
+                    self.transformed_values.push((self.transform_fn)(value));
+                }
+            }
+
+            fn visit_branch(&mut self, _branch: &BranchNode<i32, String>) {
+                // No values to transform in branch nodes
+            }
+
+            fn result(self) -> Self::Result {
+                self.transformed_values
+            }
+        }
+
+        // Use the visitor to transform values
+        let mut visitor = ValueTransformer {
+            transform_fn: |s| format!("transformed_{}", s),
+            transformed_values: Vec::new(),
+        };
+        map.accept(&mut visitor);
+
+        // Check that all values were transformed
+        let transformed_values = visitor.result();
+        assert_eq!(transformed_values.len(), 3);
+        assert!(transformed_values.contains(&"transformed_one".to_string()));
+        assert!(transformed_values.contains(&"transformed_two".to_string()));
+        assert!(transformed_values.contains(&"transformed_three".to_string()));
     }
 }
