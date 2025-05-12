@@ -622,6 +622,13 @@ where
         self.iter().map(|(k, _)| k)
     }
 
+    /// Returns an iterator over the values of the map.
+    /// The iterator yields all values in ascending order by key.
+    pub fn values(&self) -> impl Iterator<Item = &V> + '_ {
+        // Use the iter method and map to extract just the values
+        self.iter().map(|(_, v)| v)
+    }
+
     /// Returns a mutable iterator over the key-value pairs of the map.
     /// The iterator yields all key-value pairs in ascending order by key.
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
