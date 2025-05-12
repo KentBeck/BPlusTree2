@@ -6,17 +6,20 @@ use std::ops::Index;
 use std::vec;
 
 // Node types for the B+ tree
+#[derive(Clone)]
 pub struct LeafNode<K, V> {
     pub keys: Vec<K>,
     pub values: Vec<V>,
 }
 
+#[derive(Clone)]
 pub struct BranchNode<K, V> {
     keys: Vec<K>,
     children: Vec<Node<K, V>>,
 }
 
 // Enum to represent different node types
+#[derive(Clone)]
 enum Node<K, V> {
     Leaf(LeafNode<K, V>),
     Branch(BranchNode<K, V>),
@@ -148,9 +151,31 @@ where
                         leaf.keys.insert(idx, key);
                         leaf.values.insert(idx, value);
 
-                        // We don't need to split the leaf for the current tests
+                        // Check if the leaf needs to be split
+                        if leaf.keys.len() > branching_factor {
+                            // Split the leaf node
+                            let split_idx = leaf.keys.len() / 2;
+                            let split_key = leaf.keys[split_idx].clone();
 
-                        (Node::Leaf(leaf), None)
+                            // Create a new leaf with the right half of the keys/values
+                            let right_keys = leaf.keys.drain(split_idx..).collect();
+                            let right_values = leaf.values.drain(split_idx..).collect();
+                            let right_leaf = LeafNode {
+                                keys: right_keys,
+                                values: right_values,
+                            };
+
+                            // Create a branch node with the split key and the two leaf nodes
+                            let branch = BranchNode {
+                                keys: vec![split_key],
+                                children: vec![Node::Leaf(leaf), Node::Leaf(right_leaf)],
+                            };
+
+                            (Node::Branch(branch), None)
+                        } else {
+                            // No need to split
+                            (Node::Leaf(leaf), None)
+                        }
                     }
                 }
             }
@@ -160,6 +185,13 @@ where
                     Ok(idx) => idx + 1, // If key exists, go to the right child
                     Err(idx) => idx,    // Otherwise, go to the appropriate child
                 };
+
+                // Check if the index is valid
+                if idx >= branch.children.len() {
+                    // This can happen if we're trying to insert a key that's greater than all existing keys
+                    // In this case, we need to add a new child node
+                    branch.children.push(Node::Leaf(Self::create_empty_leaf()));
+                }
 
                 // Take the child node out
                 let child = std::mem::replace(
@@ -174,9 +206,52 @@ where
                 // Put the child back
                 branch.children[idx] = new_child;
 
-                // Branch node splitting not needed for current tests
+                // Check if the child was split and we need to update the branch
+                if let Node::Branch(new_branch) = &branch.children[idx] {
+                    // If the child is now a branch node, it means it was split
+                    // We need to extract the middle key and add the new child
+                    if new_branch.keys.len() == 1 && new_branch.children.len() == 2 {
+                        // Extract the middle key and the right child
+                        let middle_key = new_branch.keys[0].clone();
+                        let right_child = new_branch.children[1].clone();
 
-                (Node::Branch(branch), old_value)
+                        // Replace the child with its left child
+                        branch.children[idx] = new_branch.children[0].clone();
+
+                        // Insert the middle key and the right child into the branch
+                        branch.keys.insert(idx, middle_key);
+                        branch.children.insert(idx + 1, right_child);
+                    }
+                }
+
+                // Check if the branch needs to be split
+                if branch.keys.len() > branching_factor {
+                    // Split the branch node
+                    let split_idx = branch.keys.len() / 2;
+                    let split_key = branch.keys[split_idx].clone();
+
+                    // Create a new branch with the right half of the keys/children
+                    let right_keys = branch.keys.drain(split_idx + 1..).collect();
+                    let right_children = branch.children.drain(split_idx + 1..).collect();
+                    let right_branch = BranchNode {
+                        keys: right_keys,
+                        children: right_children,
+                    };
+
+                    // Remove the split key from the left branch
+                    branch.keys.pop();
+
+                    // Create a new branch node with the split key and the two branch nodes
+                    let new_branch = BranchNode {
+                        keys: vec![split_key],
+                        children: vec![Node::Branch(branch), Node::Branch(right_branch)],
+                    };
+
+                    (Node::Branch(new_branch), old_value)
+                } else {
+                    // No need to split
+                    (Node::Branch(branch), old_value)
+                }
             }
         }
     }
@@ -496,26 +571,7 @@ where
         let mut entries = Vec::new();
 
         if let Some(root) = &self.root {
-            match root {
-                Node::Leaf(leaf) => {
-                    // Add all entries from this leaf node
-                    for i in 0..leaf.keys.len() {
-                        entries.push((&leaf.keys[i], &leaf.values[i]));
-                    }
-                }
-                Node::Branch(branch) => {
-                    // For branch nodes, we need to traverse the tree
-                    // This is a simplified version that works for our tests
-                    for child in &branch.children {
-                        if let Node::Leaf(leaf) = child {
-                            // Add all entries from this leaf node
-                            for i in 0..leaf.keys.len() {
-                                entries.push((&leaf.keys[i], &leaf.values[i]));
-                            }
-                        }
-                    }
-                }
-            }
+            Self::collect_entries_for_iter(root, &mut entries);
         }
 
         // Sort entries by key for consistent iteration order
@@ -523,6 +579,24 @@ where
 
         // Return an iterator over the entries
         entries.into_iter()
+    }
+
+    /// Helper method to collect entries for the iter method
+    fn collect_entries_for_iter<'a>(node: &'a Node<K, V>, entries: &mut Vec<(&'a K, &'a V)>) {
+        match node {
+            Node::Leaf(leaf) => {
+                // Add all entries from this leaf node
+                for i in 0..leaf.keys.len() {
+                    entries.push((&leaf.keys[i], &leaf.values[i]));
+                }
+            }
+            Node::Branch(branch) => {
+                // Recursively collect entries from all children
+                for child in &branch.children {
+                    Self::collect_entries_for_iter(child, entries);
+                }
+            }
+        }
     }
 }
 
@@ -601,9 +675,45 @@ where
                     match &branch.children[idx] {
                         Node::Leaf(leaf) => Some((leaf, idx)),
                         Node::Branch(_) => {
-                            // For a full implementation, we would recursively search deeper
-                            // but for now, we'll just return None as our current tests don't need this
-                            None
+                            // Recursively search deeper in the tree
+                            Self::find_leaf_for_key_recursive(&branch.children[idx], key)
+                        }
+                    }
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// Recursively finds a leaf node that might contain the given key
+    fn find_leaf_for_key_recursive<'a, 'b, Q>(
+        node: &'a Node<K, V>,
+        key: &'b Q,
+    ) -> Option<(&'a LeafNode<K, V>, usize)>
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        match node {
+            Node::Leaf(leaf) => Some((leaf, 0)),
+            Node::Branch(branch) => {
+                // Find the child node to search in
+                let mut idx = 0;
+                for (i, k) in branch.keys.iter().enumerate() {
+                    if key.cmp(k.borrow()) == Ordering::Less {
+                        break;
+                    }
+                    idx = i + 1;
+                }
+
+                // Check if the index is valid
+                if idx < branch.children.len() {
+                    match &branch.children[idx] {
+                        Node::Leaf(leaf) => Some((leaf, idx)),
+                        Node::Branch(_) => {
+                            // Recursively search deeper in the tree
+                            Self::find_leaf_for_key_recursive(&branch.children[idx], key)
                         }
                     }
                 } else {

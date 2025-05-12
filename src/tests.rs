@@ -657,4 +657,84 @@ mod tests {
         }
         assert_eq!(count, 2);
     }
+
+    #[test]
+    fn test_multi_level_tree_creation() {
+        // Create a map with a small branching factor to force multiple levels
+        let mut map = BPlusTreeMap::with_branching_factor(3);
+
+        // Insert enough elements to create a tree with depth > 2
+        // With branching factor 3, we need at least 9 elements to get to depth 3
+        for i in 1..=20 {
+            map.insert(i, format!("value_{}", i));
+        }
+
+        // Verify all elements are accessible
+        for i in 1..=20 {
+            assert_eq!(map.get(&i), Some(&format!("value_{}", i)));
+        }
+
+        // Verify the size is correct
+        assert_eq!(map.len(), 20);
+
+        // Verify iteration works correctly
+        let entries: Vec<(&i32, &String)> = map.iter().collect();
+        assert_eq!(entries.len(), 20);
+
+        // Check that entries are in ascending order by key
+        for i in 0..20 {
+            assert_eq!(entries[i], (&(i as i32 + 1), &format!("value_{}", i + 1)));
+        }
+
+        // Test removing elements from the multi-level tree
+        for i in 1..=10 {
+            assert_eq!(map.remove(&i), Some(format!("value_{}", i)));
+        }
+
+        // Verify size after removal
+        assert_eq!(map.len(), 10);
+
+        // Verify remaining elements are still accessible
+        for i in 11..=20 {
+            assert_eq!(map.get(&i), Some(&format!("value_{}", i)));
+        }
+
+        // Verify removed elements are no longer accessible
+        for i in 1..=10 {
+            assert_eq!(map.get(&i), None);
+        }
+
+        // Test inserting new elements after removal
+        for i in 1..=5 {
+            map.insert(i, format!("new_value_{}", i));
+        }
+
+        // Verify size after insertion
+        assert_eq!(map.len(), 15);
+
+        // Verify new elements are accessible
+        for i in 1..=5 {
+            assert_eq!(map.get(&i), Some(&format!("new_value_{}", i)));
+        }
+
+        // Verify iteration still works correctly
+        let entries: Vec<(&i32, &String)> = map.iter().collect();
+        assert_eq!(entries.len(), 15);
+
+        // Check that the first 5 entries are the newly inserted ones
+        for i in 0..5 {
+            assert_eq!(
+                entries[i],
+                (&(i as i32 + 1), &format!("new_value_{}", i + 1))
+            );
+        }
+
+        // Check that the remaining entries are the original ones
+        for i in 0..10 {
+            assert_eq!(
+                entries[i + 5],
+                (&(i as i32 + 11), &format!("value_{}", i + 11))
+            );
+        }
+    }
 }

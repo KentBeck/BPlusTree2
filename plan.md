@@ -58,7 +58,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 
 31. Test leaf node splitting when exceeding branching factor
 32. Test branch node splitting when exceeding branching factor
-33. Test multi-level tree creation (depth > 2)
+33. ~~Test multi-level tree creation (depth > 2)~~ ✓
 34. Test traversing a multi-level tree
 35. Test inserting into a multi-level tree
 36. Test removing from a multi-level tree
