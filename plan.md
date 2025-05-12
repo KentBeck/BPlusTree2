@@ -54,35 +54,52 @@ Each commit should have all the tests passing. Under no circumstances should you
 29. Test retaining elements based on a predicate
 30. Test entry API for conditional insertion/modification
 
+### B+ Tree Specific Operations
+
+31. Test leaf node splitting when exceeding branching factor
+32. Test branch node splitting when exceeding branching factor
+33. Test multi-level tree creation (depth > 2)
+34. Test traversing a multi-level tree
+35. Test inserting into a multi-level tree
+36. Test removing from a multi-level tree
+37. Test rebalancing after removal
+38. Test merging nodes after removal when underfilled
+
+### Code Structure Refactoring Tests
+
+39. Test extracting common tree traversal logic
+40. Test separating node operations into dedicated modules
+41. Test implementing proper recursive handling of branch nodes in iterators
+
 ### Edge Cases
 
-31. Test behavior with very large number of elements
-32. Test with complex key types that implement Ord
-33. Test proper memory management (no leaks)
-34. Test with keys at the boundaries of their range (min/max integers)
-35. Test with keys that have the same hash but are different (hash collision)
-36. Test with empty strings as keys or values
-37. Test with very long keys or values (e.g., large strings)
-38. Test with non-ASCII characters in keys or values
-39. Test with unbalanced trees (many insertions/deletions on one side)
-40. Test with repeated insertions and deletions in the same location
-41. Test with operations that cause multiple node splits or merges
-42. Test with operations that cause root node changes
-43. Test with operations near the branching factor boundary
-44. Test with custom comparators for key ordering
-45. Test with reverse ordering of keys
-46. Test with concurrent access from multiple threads
-47. Test with thread safety and synchronization
-48. Test with serialization and deserialization of the tree
-49. Test with persistence across program restarts
-50. Test with error handling during operations
-51. Test with zero-sized types as keys or values
-52. Test with self-referential structures as values
-53. Test with floating-point numbers as keys (precision issues)
-54. Test with very similar keys that test comparison precision
-55. Test with random access patterns vs sequential access patterns
-56. Test with extremely uneven distribution of keys
-57. Test with pathological insertion orders that cause worst-case behavior
-58. Test with keys that trigger edge cases in the comparison function
-59. Test with operations that hit every code path in node splitting/merging
-60. Test with operations during iteration (modification during traversal)
+42. Test behavior with very large number of elements
+43. Test with complex key types that implement Ord
+44. Test proper memory management (no leaks)
+45. Test with keys at the boundaries of their range (min/max integers)
+46. Test with keys that have the same hash but are different (hash collision)
+47. Test with empty strings as keys or values
+48. Test with very long keys or values (e.g., large strings)
+49. Test with non-ASCII characters in keys or values
+50. Test with unbalanced trees (many insertions/deletions on one side)
+51. Test with repeated insertions and deletions in the same location
+52. Test with operations that cause multiple node splits or merges
+53. Test with operations that cause root node changes
+54. Test with operations near the branching factor boundary
+55. Test with custom comparators for key ordering
+56. Test with reverse ordering of keys
+57. Test with concurrent access from multiple threads
+58. Test with thread safety and synchronization
+59. Test with serialization and deserialization of the tree
+60. Test with persistence across program restarts
+61. Test with error handling during operations
+62. Test with zero-sized types as keys or values
+63. Test with self-referential structures as values
+64. Test with floating-point numbers as keys (precision issues)
+65. Test with very similar keys that test comparison precision
+66. Test with random access patterns vs sequential access patterns
+67. Test with extremely uneven distribution of keys
+68. Test with pathological insertion orders that cause worst-case behavior
+69. Test with keys that trigger edge cases in the comparison function
+70. Test with operations that hit every code path in node splitting/merging
+71. Test with operations during iteration (modification during traversal)
