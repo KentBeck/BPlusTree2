@@ -87,12 +87,6 @@ where
         (split_key, new_leaf)
     }
 
-    // Public version of split_leaf for testing
-    #[cfg(test)]
-    pub(crate) fn test_split_leaf(leaf: &mut LeafNode<K, V>) -> (K, LeafNode<K, V>) {
-        Self::split_leaf(leaf)
-    }
-
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where
         K: std::borrow::Borrow<Q>,
