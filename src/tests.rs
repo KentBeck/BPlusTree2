@@ -1,5 +1,6 @@
 // Tests for BPlusTreeMap
 
+mod node_operations_tests;
 mod refactor_tests;
 
 #[cfg(test)]

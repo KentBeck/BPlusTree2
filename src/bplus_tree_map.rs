@@ -14,13 +14,13 @@ pub struct LeafNode<K, V> {
 
 #[derive(Clone)]
 pub struct BranchNode<K, V> {
-    keys: Vec<K>,
-    children: Vec<Node<K, V>>,
+    pub keys: Vec<K>,
+    pub children: Vec<Node<K, V>>,
 }
 
 // Enum to represent different node types
 #[derive(Clone)]
-enum Node<K, V> {
+pub enum Node<K, V> {
     Leaf(LeafNode<K, V>),
     Branch(BranchNode<K, V>),
 }

@@ -109,7 +109,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 72. Implement a cursor/position abstraction for tracking location in the tree
 73. ~~Implement a node visitor pattern for unified tree traversal~~ ✓
 74. ~~Create a common iterator abstraction to simplify iterator implementations~~ ✓
-75. Extract node operations (splitting, merging) into separate abstractions
+75. ~~Extract node operations (splitting, merging) into separate abstractions~~ ✓
 76. Develop a unified tree traversal abstraction with different traversal orders
 77. ~~Create a key-value pair (Entry) abstraction for simplified operations~~ ✓
 78. Implement a node balancing abstraction for insertion and removal operations
