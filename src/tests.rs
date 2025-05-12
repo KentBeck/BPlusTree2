@@ -47,6 +47,29 @@ mod tests {
     }
 
     #[test]
+    fn test_retrieve_value_by_key() {
+        let mut map = BPlusTreeMap::new();
+
+        // Insert some key-value pairs
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Test retrieving existing keys
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+
+        // Test retrieving non-existent keys
+        assert_eq!(map.get(&0), None);
+        assert_eq!(map.get(&4), None);
+
+        // Test with a different type that can be borrowed from the key type
+        let key_ref: &i32 = &2;
+        assert_eq!(map.get(key_ref), Some(&"two".to_string()));
+    }
+
+    #[test]
     fn test_branch_node_structure() {
         // Create leaf nodes
         let left_leaf = LeafNode {

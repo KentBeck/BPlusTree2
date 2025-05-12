@@ -1,6 +1,6 @@
 We are implementing a BPlusTreeMap in Rust. We are writing the code like Kent Beck would write it. Before modifying code we consider whether tidying first would make the change easier. Commits will be separated into commits that change the behavior of the code and commits that only change the structure of the code. Write the code one test at a time. Write the test. Get it to compile. Get it to pass. Tidy after if appropriate.
 
-By the time we are done we should have a plug replacement for BTreeMap. In the rest of this document, fill in the names of tests that will encourage us to develop the code step by step. If during implementation you notice a test is needed that is not in the list, add it at the appropriate place in the list. As you complete tests, cross them off the list.
+By the time we are done we should have a plug replacement for BTreeMap. If during implementation you notice a test is needed that is not in the list, add it at the appropriate place in the list. As you complete tests, cross them off the list. Only implement enough code to make the test you just wrote pass, along with all the previous tests. If you find you have implemented too much, git revert --hard & try again.
 
 Each commit should have all the tests passing. Under no circumstances should you erase or alter tests just to get a commit to pass. If there is a genuine bug in a test, fix the test, but note that in the commit message.
 
@@ -10,7 +10,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 
 1. ~~Test creating an empty BPlusTreeMap~~ ✓
 2. ~~Test inserting a single key-value pair~~ ✓
-3. Test retrieving a value by key
+3. ~~Test retrieving a value by key~~ ✓
 4. Test overwriting an existing key's value
 5. Test removing a key-value pair
 6. Test checking if a key exists
