@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 
 // Node types for the B+ tree
 pub struct LeafNode<K, V> {
@@ -341,5 +342,19 @@ where
                 (Some(Node::Branch(branch)), None)
             }
         }
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut map = BPlusTreeMap::new();
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+        map
     }
 }

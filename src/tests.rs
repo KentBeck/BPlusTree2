@@ -3,6 +3,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::bplus_tree_map::{BPlusTreeMap, LeafNode};
+    use std::iter::FromIterator;
 
     #[test]
     fn test_create_empty_bplus_tree_map() {
@@ -221,5 +222,46 @@ mod tests {
         // Remove the last key and check if the map is empty
         map.remove(&3);
         assert_eq!(map.is_empty(), true);
+    }
+
+    #[test]
+    fn test_creating_bplus_tree_map_from_iterator() {
+        // Create a vector of key-value pairs
+        let pairs = vec![
+            (1, "one".to_string()),
+            (2, "two".to_string()),
+            (3, "three".to_string()),
+        ];
+
+        // Create a BPlusTreeMap from the iterator
+        let map = BPlusTreeMap::from_iter(pairs);
+
+        // Check that the map has the correct size
+        assert_eq!(map.len(), 3);
+
+        // Check that all key-value pairs are in the map
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+
+        // Check that a non-existent key returns None
+        assert_eq!(map.get(&4), None);
+
+        // Test with an empty iterator
+        let empty_pairs: Vec<(i32, String)> = Vec::new();
+        let empty_map = BPlusTreeMap::from_iter(empty_pairs);
+        assert_eq!(empty_map.len(), 0);
+        assert_eq!(empty_map.is_empty(), true);
+
+        // Test with duplicate keys (later entries should overwrite earlier ones)
+        let duplicate_pairs = vec![
+            (1, "one".to_string()),
+            (2, "two".to_string()),
+            (1, "new one".to_string()),
+        ];
+        let duplicate_map = BPlusTreeMap::from_iter(duplicate_pairs);
+        assert_eq!(duplicate_map.len(), 2);
+        assert_eq!(duplicate_map.get(&1), Some(&"new one".to_string()));
+        assert_eq!(duplicate_map.get(&2), Some(&"two".to_string()));
     }
 }
