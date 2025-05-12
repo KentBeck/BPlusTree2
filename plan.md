@@ -37,7 +37,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 18. ~~Test consuming iteration (into_iter)~~ ✓
 19. ~~Test iterating over keys only (keys)~~ ✓
 20. ~~Test iterating over values only (values)~~ ✓
-21. Test iterating over mutable values (values_mut)
+21. ~~Test iterating over mutable values (values_mut)~~ ✓
 
 ### Ordered Map Operations
 
