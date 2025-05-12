@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::iter::FromIterator;
+use std::vec;
 
 // Node types for the B+ tree
 pub struct LeafNode<K, V> {
@@ -367,6 +368,68 @@ where
     fn extend<I: IntoIterator<Item = (K, V)>>(&mut self, iter: I) {
         for (k, v) in iter {
             self.insert(k, v);
+        }
+    }
+}
+
+/// An owning iterator over the entries of a `BPlusTreeMap`.
+pub struct IntoIter<K, V> {
+    // We'll use a simple vector-based approach for now
+    // In a more advanced implementation, we might want to iterate through the tree structure directly
+    entries: vec::IntoIter<(K, V)>,
+}
+
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.entries.next()
+    }
+}
+
+impl<K, V> IntoIterator for BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Collect all entries into a vector
+        let mut entries = Vec::new();
+
+        // Extract entries from the tree
+        if let Some(root) = self.root {
+            Self::collect_entries(root, &mut entries);
+        }
+
+        IntoIter {
+            entries: entries.into_iter(),
+        }
+    }
+}
+
+impl<K, V> BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    // Helper method to collect all entries from the tree into a vector
+    fn collect_entries(node: Node<K, V>, entries: &mut Vec<(K, V)>) {
+        match node {
+            Node::Leaf(leaf) => {
+                // Add all entries from this leaf node
+                for i in 0..leaf.keys.len() {
+                    entries.push((leaf.keys[i].clone(), leaf.values[i].clone()));
+                }
+            }
+            Node::Branch(branch) => {
+                // Recursively collect entries from all children
+                for child in branch.children {
+                    Self::collect_entries(child, entries);
+                }
+            }
         }
     }
 }

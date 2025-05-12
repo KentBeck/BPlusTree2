@@ -306,4 +306,65 @@ mod tests {
         assert_eq!(map.get(&2), Some(&"new two".to_string())); // Value should be updated
         assert_eq!(map.get(&5), Some(&"five".to_string())); // New key-value pair should be added
     }
+
+    #[test]
+    fn test_converting_bplus_tree_map_into_iterator() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Convert the map into an iterator
+        let iter = map.into_iter();
+
+        // Collect the iterator into a vector for easier testing
+        let entries: Vec<(i32, String)> = iter.collect();
+
+        // Check that all entries are present (order may vary)
+        assert_eq!(entries.len(), 3);
+
+        // Sort the entries by key for consistent testing
+        let mut sorted_entries = entries.clone();
+        sorted_entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Check each entry
+        assert_eq!(sorted_entries[0], (1, "one".to_string()));
+        assert_eq!(sorted_entries[1], (2, "two".to_string()));
+        assert_eq!(sorted_entries[2], (3, "three".to_string()));
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let empty_iter = empty_map.into_iter();
+        let empty_entries: Vec<(i32, String)> = empty_iter.collect();
+        assert_eq!(empty_entries.len(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let branch_iter = branch_map.into_iter();
+        let branch_entries: Vec<(i32, String)> = branch_iter.collect();
+
+        // Check that all entries are present
+        assert_eq!(branch_entries.len(), 4);
+
+        // Sort the entries by key for consistent testing
+        let mut sorted_branch_entries = branch_entries.clone();
+        sorted_branch_entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Check each entry
+        assert_eq!(sorted_branch_entries[0], (1, "one".to_string()));
+        assert_eq!(sorted_branch_entries[1], (2, "two".to_string()));
+        assert_eq!(sorted_branch_entries[2], (4, "four".to_string()));
+        assert_eq!(sorted_branch_entries[3], (5, "five".to_string()));
+    }
 }
