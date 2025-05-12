@@ -103,3 +103,16 @@ Each commit should have all the tests passing. Under no circumstances should you
 69. Test with keys that trigger edge cases in the comparison function
 70. Test with operations that hit every code path in node splitting/merging
 71. Test with operations during iteration (modification during traversal)
+
+### Missing Abstractions for Simplification
+
+72. Implement a cursor/position abstraction for tracking location in the tree
+73. Implement a node visitor pattern for unified tree traversal
+74. Create a common iterator abstraction to simplify iterator implementations
+75. Extract node operations (splitting, merging) into separate abstractions
+76. Develop a unified tree traversal abstraction with different traversal orders
+77. Create a key-value pair (Entry) abstraction for simplified operations
+78. Implement a node balancing abstraction for insertion and removal operations
+79. Refactor to eliminate unsafe code through better abstractions
+80. Implement a path abstraction for tracking ancestry during tree operations
+81. Create a node buffer abstraction to simplify node splitting and merging
