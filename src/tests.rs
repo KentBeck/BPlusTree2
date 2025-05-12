@@ -737,4 +737,89 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_iterating_with_mutable_references() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Modify values using iter_mut
+        for (_, value) in map.iter_mut() {
+            *value = format!("modified_{}", value);
+        }
+
+        // Verify that values were modified
+        assert_eq!(map.get(&1), Some(&"modified_one".to_string()));
+        assert_eq!(map.get(&2), Some(&"modified_two".to_string()));
+        assert_eq!(map.get(&3), Some(&"modified_three".to_string()));
+
+        // Test with an empty map
+        let mut empty_map = BPlusTreeMap::<i32, String>::new();
+        let empty_entries: Vec<(&i32, &mut String)> = empty_map.iter_mut().collect();
+        assert_eq!(empty_entries.len(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let mut branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+
+        // Modify values using iter_mut
+        for (key, value) in branch_map.iter_mut() {
+            *value = format!("modified_{}_{}", value, key);
+        }
+
+        // Verify that values were modified
+        assert_eq!(branch_map.get(&1), Some(&"modified_one_1".to_string()));
+        assert_eq!(branch_map.get(&2), Some(&"modified_two_2".to_string()));
+        assert_eq!(branch_map.get(&4), Some(&"modified_four_4".to_string()));
+        assert_eq!(branch_map.get(&5), Some(&"modified_five_5".to_string()));
+
+        // Test with a multi-level tree
+        let mut multi_level_map = BPlusTreeMap::with_branching_factor(3);
+        for i in 1..=10 {
+            multi_level_map.insert(i, format!("value_{}", i));
+        }
+
+        // Modify values using iter_mut
+        for (key, value) in multi_level_map.iter_mut() {
+            *value = format!("modified_{}_{}", value, key);
+        }
+
+        // Verify that values were modified
+        for i in 1..=10 {
+            assert_eq!(
+                multi_level_map.get(&i),
+                Some(&format!("modified_value_{}_{}", i, i))
+            );
+        }
+
+        // Test that iter_mut can be used to selectively modify values
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, 10);
+        map.insert(2, 20);
+        map.insert(3, 30);
+
+        // Double only even values
+        for (key, value) in map.iter_mut() {
+            if *key % 2 == 0 {
+                *value *= 2;
+            }
+        }
+
+        // Verify that only even values were modified
+        assert_eq!(map.get(&1), Some(&10));
+        assert_eq!(map.get(&2), Some(&40)); // 20 * 2 = 40
+        assert_eq!(map.get(&3), Some(&30));
+    }
 }

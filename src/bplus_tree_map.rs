@@ -434,6 +434,40 @@ impl<K, V> Iterator for IntoIter<K, V> {
     }
 }
 
+/// A mutable iterator over the entries of a `BPlusTreeMap`.
+pub struct IterMut<'a, K, V> {
+    // Store key-value pairs as (K, &'a mut V) to avoid lifetime issues
+    entries: Vec<(K, &'a mut V)>,
+    position: usize,
+}
+
+impl<'a, K, V> Iterator for IterMut<'a, K, V>
+where
+    K: Ord + Clone + Debug + 'a,
+{
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.position < self.entries.len() {
+            let position = self.position;
+            self.position += 1;
+
+            // Get a reference to the key and a mutable reference to the value
+            let entry = &mut self.entries[position];
+
+            // This is safe because we're returning each entry exactly once
+            // and we know the indices are valid
+            unsafe {
+                let key_ptr = &entry.0 as *const K;
+                let value_ptr = &mut *(entry.1 as *mut V);
+                Some((&*key_ptr, value_ptr))
+            }
+        } else {
+            None
+        }
+    }
+}
+
 impl<K, V> IntoIterator for BPlusTreeMap<K, V>
 where
     K: Ord + Clone + Debug,
@@ -579,6 +613,59 @@ where
 
         // Return an iterator over the entries
         entries.into_iter()
+    }
+
+    /// Returns a mutable iterator over the key-value pairs of the map.
+    /// The iterator yields all key-value pairs in ascending order by key.
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        // Create a new mutable iterator
+        let mut entries = Vec::new();
+
+        // Collect all entries from the tree
+        if let Some(root) = &mut self.root {
+            Self::collect_entries_for_iter_mut(root, &mut entries);
+        }
+
+        // Sort entries by key for consistent iteration order
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+        // Return the iterator
+        IterMut {
+            entries,
+            position: 0,
+        }
+    }
+
+    /// Helper method to collect entries for the iter_mut method
+    fn collect_entries_for_iter_mut<'a>(
+        node: &'a mut Node<K, V>,
+        entries: &mut Vec<(K, &'a mut V)>,
+    ) {
+        match node {
+            Node::Leaf(leaf) => {
+                // We need to handle this differently to avoid multiple mutable borrows
+                let keys_len = leaf.keys.len();
+
+                // Clone all keys first
+                let keys: Vec<K> = leaf.keys.iter().cloned().collect();
+
+                // Then get mutable references to values one by one
+                for i in 0..keys_len {
+                    // This is safe because we're accessing each index exactly once
+                    // and we know the indices are valid
+                    unsafe {
+                        let value_ptr = leaf.values.as_mut_ptr().add(i);
+                        entries.push((keys[i].clone(), &mut *value_ptr));
+                    }
+                }
+            }
+            Node::Branch(branch) => {
+                // Recursively collect entries from all children
+                for child in &mut branch.children {
+                    Self::collect_entries_for_iter_mut(child, entries);
+                }
+            }
+        }
     }
 
     /// Helper method to collect entries for the iter method

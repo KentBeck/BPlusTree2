@@ -33,7 +33,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 ### Iterator Methods
 
 16. ~~Test iterating over key-value pairs (iter)~~ ✓
-17. Test iterating with mutable references (iter_mut)
+17. ~~Test iterating with mutable references (iter_mut)~~ ✓
 18. Test consuming iteration (into_iter)
 19. Test iterating over keys only (keys)
 20. Test iterating over values only (values)
