@@ -1,6 +1,7 @@
 // BPlusTreeMap implementation
 
 pub mod bplus_tree_map;
+pub mod node_balancer;
 pub mod node_operations;
 mod safe_traversal;
 mod tests;

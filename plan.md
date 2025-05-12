@@ -112,7 +112,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 75. ~~Extract node operations (splitting, merging) into separate abstractions~~ ✓
 76. Develop a unified tree traversal abstraction with different traversal orders
 77. ~~Create a key-value pair (Entry) abstraction for simplified operations~~ ✓
-78. Implement a node balancing abstraction for insertion and removal operations
+78. ✅ Implement a node balancing abstraction for insertion and removal operations
 79. ~~Refactor to eliminate unsafe code through better abstractions~~ ✓
 80. Implement a path abstraction for tracking ancestry during tree operations
 81. Create a node buffer abstraction to simplify node splitting and merging

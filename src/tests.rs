@@ -1,5 +1,7 @@
 // Tests for BPlusTreeMap
 
+mod node_balancer_tests;
+mod node_balancing_integration_tests;
 mod node_operations_tests;
 mod refactor_tests;
 

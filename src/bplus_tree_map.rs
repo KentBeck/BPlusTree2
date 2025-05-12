@@ -5,6 +5,8 @@ use std::iter::FromIterator;
 use std::ops::Index;
 use std::vec;
 
+use crate::node_balancer::{BalanceResult, InsertionBalancer, NodeBalancer, RemovalBalancer};
+
 // Node types for the B+ tree
 #[derive(Clone)]
 pub struct LeafNode<K, V> {
@@ -30,6 +32,8 @@ pub struct BPlusTreeMap<K, V> {
     root: Option<Node<K, V>>,
     branching_factor: usize,
     size: usize,
+    insertion_balancer: InsertionBalancer,
+    removal_balancer: RemovalBalancer,
 }
 
 impl<K, V> BPlusTreeMap<K, V>
@@ -51,6 +55,8 @@ where
             root: None,
             branching_factor,
             size: 0,
+            insertion_balancer: InsertionBalancer::new(branching_factor),
+            removal_balancer: RemovalBalancer::new(branching_factor),
         }
     }
 
@@ -85,6 +91,8 @@ where
             root: Some(Node::Branch(branch)),
             branching_factor,
             size,
+            insertion_balancer: InsertionBalancer::new(branching_factor),
+            removal_balancer: RemovalBalancer::new(branching_factor),
         }
     }
 
@@ -101,8 +109,6 @@ where
     /// Inserts a key-value pair into the map
     /// Returns the old value if the key already existed
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let branching_factor = self.branching_factor;
-
         match self.root.take() {
             None => {
                 // Create a new leaf node for the first insertion
@@ -117,7 +123,7 @@ where
             Some(root) => {
                 // Handle insertion into an existing tree
                 let (new_root, old_value) =
-                    Self::insert_recursive(root, key, value, branching_factor);
+                    Self::insert_recursive(root, key, value, &self.insertion_balancer);
                 self.root = Some(new_root);
 
                 // Update size if this is a new key
@@ -135,7 +141,7 @@ where
         node: Node<K, V>,
         key: K,
         value: V,
-        branching_factor: usize,
+        balancer: &InsertionBalancer,
     ) -> (Node<K, V>, Option<V>) {
         match node {
             Node::Leaf(mut leaf) => {
@@ -151,30 +157,23 @@ where
                         leaf.keys.insert(idx, key);
                         leaf.values.insert(idx, value);
 
-                        // Check if the leaf needs to be split
-                        if leaf.keys.len() > branching_factor {
-                            // Split the leaf node
-                            let split_idx = leaf.keys.len() / 2;
-                            let split_key = leaf.keys[split_idx].clone();
+                        // Use the balancer to check if the node needs to be split
+                        match balancer.balance_node(Node::Leaf(leaf)) {
+                            BalanceResult::Split {
+                                left,
+                                right,
+                                separator,
+                            } => {
+                                // Create a branch node with the separator key and the two nodes
+                                let branch = BranchNode {
+                                    keys: vec![separator],
+                                    children: vec![left, right],
+                                };
 
-                            // Create a new leaf with the right half of the keys/values
-                            let right_keys = leaf.keys.drain(split_idx..).collect();
-                            let right_values = leaf.values.drain(split_idx..).collect();
-                            let right_leaf = LeafNode {
-                                keys: right_keys,
-                                values: right_values,
-                            };
-
-                            // Create a branch node with the split key and the two leaf nodes
-                            let branch = BranchNode {
-                                keys: vec![split_key],
-                                children: vec![Node::Leaf(leaf), Node::Leaf(right_leaf)],
-                            };
-
-                            (Node::Branch(branch), None)
-                        } else {
-                            // No need to split
-                            (Node::Leaf(leaf), None)
+                                (Node::Branch(branch), None)
+                            }
+                            BalanceResult::NoChange(node) => (node, None),
+                            _ => panic!("Unexpected balance result for insertion"),
                         }
                     }
                 }
@@ -200,8 +199,7 @@ where
                 );
 
                 // Recursively insert into the child node
-                let (new_child, old_value) =
-                    Self::insert_recursive(child, key, value, branching_factor);
+                let (new_child, old_value) = Self::insert_recursive(child, key, value, balancer);
 
                 // Put the child back
                 branch.children[idx] = new_child;
@@ -224,33 +222,23 @@ where
                     }
                 }
 
-                // Check if the branch needs to be split
-                if branch.keys.len() > branching_factor {
-                    // Split the branch node
-                    let split_idx = branch.keys.len() / 2;
-                    let split_key = branch.keys[split_idx].clone();
+                // Use the balancer to check if the branch node needs to be split
+                match balancer.balance_node(Node::Branch(branch)) {
+                    BalanceResult::Split {
+                        left,
+                        right,
+                        separator,
+                    } => {
+                        // Create a new branch node with the separator key and the two branch nodes
+                        let new_branch = BranchNode {
+                            keys: vec![separator],
+                            children: vec![left, right],
+                        };
 
-                    // Create a new branch with the right half of the keys/children
-                    let right_keys = branch.keys.drain(split_idx + 1..).collect();
-                    let right_children = branch.children.drain(split_idx + 1..).collect();
-                    let right_branch = BranchNode {
-                        keys: right_keys,
-                        children: right_children,
-                    };
-
-                    // Remove the split key from the left branch
-                    branch.keys.pop();
-
-                    // Create a new branch node with the split key and the two branch nodes
-                    let new_branch = BranchNode {
-                        keys: vec![split_key],
-                        children: vec![Node::Branch(branch), Node::Branch(right_branch)],
-                    };
-
-                    (Node::Branch(new_branch), old_value)
-                } else {
-                    // No need to split
-                    (Node::Branch(branch), old_value)
+                        (Node::Branch(new_branch), old_value)
+                    }
+                    BalanceResult::NoChange(node) => (node, old_value),
+                    _ => panic!("Unexpected balance result for insertion"),
                 }
             }
         }
@@ -291,12 +279,11 @@ where
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        let branching_factor = self.branching_factor;
-
         match self.root.take() {
             None => None,
             Some(root) => {
-                let (new_root, removed_value) = Self::remove_recursive(root, key, branching_factor);
+                let (new_root, removed_value) =
+                    Self::remove_recursive(root, key, &self.removal_balancer);
                 self.root = new_root;
 
                 // Update size if a key was removed
@@ -313,7 +300,7 @@ where
     fn remove_recursive<Q>(
         node: Node<K, V>,
         key: &Q,
-        _branching_factor: usize,
+        balancer: &RemovalBalancer,
     ) -> (Option<Node<K, V>>, Option<V>)
     where
         K: Borrow<Q>,
@@ -366,8 +353,7 @@ where
                     );
 
                     // Recursively remove from the child node
-                    let (new_child, removed_value) =
-                        Self::remove_recursive(child, key, _branching_factor);
+                    let (new_child, removed_value) = Self::remove_recursive(child, key, balancer);
 
                     // Update the branch node
                     if let Some(child) = new_child {
@@ -379,6 +365,50 @@ where
                             branch.keys.remove(idx - 1);
                         } else if !branch.keys.is_empty() {
                             branch.keys.remove(0);
+                        }
+                    }
+
+                    // Check if we need to balance adjacent nodes
+                    if idx > 0 && idx < branch.children.len() {
+                        let left_child = std::mem::replace(
+                            &mut branch.children[idx - 1],
+                            Node::Leaf(Self::create_empty_leaf()),
+                        );
+                        let right_child = std::mem::replace(
+                            &mut branch.children[idx],
+                            Node::Leaf(Self::create_empty_leaf()),
+                        );
+                        let separator = branch.keys[idx - 1].clone();
+
+                        // Clone the right child for potential use later
+                        let right_child_clone = right_child.clone();
+
+                        // Balance the nodes
+                        match balancer.balance_nodes(left_child, right_child, separator) {
+                            BalanceResult::Merged(merged_node) => {
+                                // Replace the left child with the merged node
+                                branch.children[idx - 1] = merged_node;
+                                // Remove the right child and the separator
+                                branch.children.remove(idx);
+                                branch.keys.remove(idx - 1);
+                            }
+                            BalanceResult::Rebalanced {
+                                left,
+                                right,
+                                separator,
+                            } => {
+                                // Update the children and separator
+                                branch.children[idx - 1] = left;
+                                branch.children[idx] = right;
+                                branch.keys[idx - 1] = separator;
+                            }
+                            BalanceResult::NoChange(node) => {
+                                // Put the left child back
+                                branch.children[idx - 1] = node;
+                                // We need to put the right child back too
+                                branch.children[idx] = right_child_clone;
+                            }
+                            _ => panic!("Unexpected balance result for removal"),
                         }
                     }
 
@@ -630,6 +660,8 @@ where
             root: Some(node),
             branching_factor: 4, // Default value, doesn't matter for this operation
             size: 0,             // Doesn't matter for this operation
+            insertion_balancer: InsertionBalancer::new(4), // Default value, doesn't matter for this operation
+            removal_balancer: RemovalBalancer::new(4), // Default value, doesn't matter for this operation
         };
 
         // Use the traverse method to collect all entries
