@@ -822,4 +822,89 @@ mod tests {
         assert_eq!(map.get(&2), Some(&40)); // 20 * 2 = 40
         assert_eq!(map.get(&3), Some(&30));
     }
+
+    #[test]
+    fn test_iterating_over_keys_only() {
+        // Create a map with some key-value pairs
+        let mut map = BPlusTreeMap::new();
+        map.insert(3, "three".to_string());
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // Collect the keys into a vector for easier testing
+        let keys: Vec<&i32> = map.keys().collect();
+
+        // Check that all keys are present
+        assert_eq!(keys.len(), 3);
+
+        // Check that keys are in ascending order
+        assert_eq!(keys[0], &1);
+        assert_eq!(keys[1], &2);
+        assert_eq!(keys[2], &3);
+
+        // Test with an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let empty_keys: Vec<&i32> = empty_map.keys().collect();
+        assert_eq!(empty_keys.len(), 0);
+
+        // Test with a map that has a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let branch_keys: Vec<&i32> = branch_map.keys().collect();
+
+        // Check that all keys are present
+        assert_eq!(branch_keys.len(), 4);
+
+        // Check that keys are in ascending order
+        assert_eq!(branch_keys[0], &1);
+        assert_eq!(branch_keys[1], &2);
+        assert_eq!(branch_keys[2], &4);
+        assert_eq!(branch_keys[3], &5);
+
+        // Test with a multi-level tree
+        let mut multi_level_map = BPlusTreeMap::with_branching_factor(3);
+        for i in 1..=10 {
+            multi_level_map.insert(i, format!("value_{}", i));
+        }
+
+        let multi_level_keys: Vec<&i32> = multi_level_map.keys().collect();
+
+        // Check that all keys are present
+        assert_eq!(multi_level_keys.len(), 10);
+
+        // Check that keys are in ascending order
+        for i in 0..10 {
+            assert_eq!(multi_level_keys[i], &(i as i32 + 1));
+        }
+
+        // Test that the keys iterator can be used multiple times
+        let mut map = BPlusTreeMap::new();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+
+        // First iteration
+        let mut count = 0;
+        for k in map.keys() {
+            count += 1;
+            assert!(k == &1 || k == &2);
+        }
+        assert_eq!(count, 2);
+
+        // Second iteration
+        let mut count = 0;
+        for k in map.keys() {
+            count += 1;
+            assert!(k == &1 || k == &2);
+        }
+        assert_eq!(count, 2);
+    }
 }
