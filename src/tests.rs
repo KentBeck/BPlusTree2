@@ -419,4 +419,72 @@ mod tests {
         assert!(branch_debug_str.contains("5"));
         assert!(branch_debug_str.contains("five"));
     }
+
+    #[test]
+    fn test_cloning_bplus_tree_map() {
+        // Create a map with some key-value pairs
+        let mut original_map = BPlusTreeMap::new();
+        original_map.insert(1, "one".to_string());
+        original_map.insert(2, "two".to_string());
+        original_map.insert(3, "three".to_string());
+
+        // Clone the map
+        let cloned_map = original_map.clone();
+
+        // Check that the cloned map has the same size
+        assert_eq!(cloned_map.len(), original_map.len());
+
+        // Check that all key-value pairs are in the cloned map
+        assert_eq!(cloned_map.get(&1), Some(&"one".to_string()));
+        assert_eq!(cloned_map.get(&2), Some(&"two".to_string()));
+        assert_eq!(cloned_map.get(&3), Some(&"three".to_string()));
+
+        // Modify the original map and check that the clone is not affected
+        let old_value = original_map.insert(2, "new two".to_string());
+        assert_eq!(old_value, Some("two".to_string()));
+        assert_eq!(original_map.get(&2), Some(&"new two".to_string()));
+        assert_eq!(cloned_map.get(&2), Some(&"two".to_string())); // Clone should still have the old value
+
+        // Add a new key to the original map and check that the clone is not affected
+        original_map.insert(4, "four".to_string());
+        assert_eq!(original_map.len(), 4);
+        assert_eq!(cloned_map.len(), 3);
+        assert_eq!(original_map.get(&4), Some(&"four".to_string()));
+        assert_eq!(cloned_map.get(&4), None);
+
+        // Remove a key from the original map and check that the clone is not affected
+        let removed_value = original_map.remove(&1);
+        assert_eq!(removed_value, Some("one".to_string()));
+        assert_eq!(original_map.get(&1), None);
+        assert_eq!(cloned_map.get(&1), Some(&"one".to_string())); // Clone should still have the key
+
+        // Test cloning an empty map
+        let empty_map = BPlusTreeMap::<i32, String>::new();
+        let cloned_empty_map = empty_map.clone();
+        assert_eq!(cloned_empty_map.len(), 0);
+        assert_eq!(cloned_empty_map.is_empty(), true);
+
+        // Test cloning a map with a branch node as root
+        let left_leaf = LeafNode {
+            keys: vec![1, 2],
+            values: vec!["one".to_string(), "two".to_string()],
+        };
+
+        let right_leaf = LeafNode {
+            keys: vec![4, 5],
+            values: vec!["four".to_string(), "five".to_string()],
+        };
+
+        let branch_map = BPlusTreeMap::with_branch_root(3, left_leaf, right_leaf, Some(3));
+        let cloned_branch_map = branch_map.clone();
+
+        // Check that the cloned map has the same size
+        assert_eq!(cloned_branch_map.len(), branch_map.len());
+
+        // Check that all key-value pairs are in the cloned map
+        assert_eq!(cloned_branch_map.get(&1), Some(&"one".to_string()));
+        assert_eq!(cloned_branch_map.get(&2), Some(&"two".to_string()));
+        assert_eq!(cloned_branch_map.get(&4), Some(&"four".to_string()));
+        assert_eq!(cloned_branch_map.get(&5), Some(&"five".to_string()));
+    }
 }
