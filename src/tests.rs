@@ -194,4 +194,32 @@ mod tests {
         map.remove(&2);
         assert_eq!(map.len(), 0);
     }
+
+    #[test]
+    fn test_checking_if_map_is_empty() {
+        let mut map = BPlusTreeMap::new();
+
+        // Check if a new map is empty
+        assert_eq!(map.is_empty(), true);
+
+        // Insert a key-value pair and check if the map is empty
+        map.insert(1, "one".to_string());
+        assert_eq!(map.is_empty(), false);
+
+        // Insert more key-value pairs and check if the map is empty
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+        assert_eq!(map.is_empty(), false);
+
+        // Remove keys and check if the map is empty
+        map.remove(&1);
+        assert_eq!(map.is_empty(), false);
+
+        map.remove(&2);
+        assert_eq!(map.is_empty(), false);
+
+        // Remove the last key and check if the map is empty
+        map.remove(&3);
+        assert_eq!(map.is_empty(), true);
+    }
 }
