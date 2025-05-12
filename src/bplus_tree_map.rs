@@ -487,6 +487,17 @@ where
     }
 }
 
+// Implement Default for BPlusTreeMap
+impl<K, V> Default for BPlusTreeMap<K, V>
+where
+    K: Ord + Clone + Debug,
+    V: Clone + Debug,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // Helper method for Clone implementation
 impl<K, V> BPlusTreeMap<K, V>
 where

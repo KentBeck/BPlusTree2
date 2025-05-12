@@ -24,7 +24,7 @@ Each commit should have all the tests passing. Under no circumstances should you
 11. ~~Test converting a BPlusTreeMap into an iterator (IntoIterator)~~ ✓
 12. ~~Test Debug formatting~~ ✓
 13. ~~Test cloning a BPlusTreeMap (Clone)~~ ✓
-14. Test creating an empty BPlusTreeMap with Default
+14. ~~Test creating an empty BPlusTreeMap with Default~~ ✓
 
 ### Map-Specific Traits
 

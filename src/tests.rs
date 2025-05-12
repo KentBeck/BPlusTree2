@@ -487,4 +487,42 @@ mod tests {
         assert_eq!(cloned_branch_map.get(&4), Some(&"four".to_string()));
         assert_eq!(cloned_branch_map.get(&5), Some(&"five".to_string()));
     }
+
+    #[test]
+    fn test_creating_empty_bplus_tree_map_with_default() {
+        // Create a map using Default trait
+        let map: BPlusTreeMap<i32, String> = Default::default();
+
+        // Check that the map is empty
+        assert_eq!(map.len(), 0);
+        assert_eq!(map.is_empty(), true);
+
+        // Check that the map has the default branching factor (4)
+        // We can't directly access the branching_factor field, so we'll test it indirectly
+        // by inserting elements and checking that the map behaves as expected
+        let mut map: BPlusTreeMap<i32, String> = Default::default();
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+        map.insert(4, "four".to_string());
+        map.insert(5, "five".to_string());
+
+        // Check that all elements are accessible
+        assert_eq!(map.get(&1), Some(&"one".to_string()));
+        assert_eq!(map.get(&2), Some(&"two".to_string()));
+        assert_eq!(map.get(&3), Some(&"three".to_string()));
+        assert_eq!(map.get(&4), Some(&"four".to_string()));
+        assert_eq!(map.get(&5), Some(&"five".to_string()));
+
+        // Check that the map has the correct size
+        assert_eq!(map.len(), 5);
+
+        // Test that Default::default() is equivalent to BPlusTreeMap::new()
+        let default_map: BPlusTreeMap<i32, String> = Default::default();
+        let new_map: BPlusTreeMap<i32, String> = BPlusTreeMap::new();
+
+        // Both maps should be empty
+        assert_eq!(default_map.len(), new_map.len());
+        assert_eq!(default_map.is_empty(), new_map.is_empty());
+    }
 }
