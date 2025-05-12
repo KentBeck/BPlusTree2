@@ -81,23 +81,17 @@ mod node_operations_tests {
                 separator,
             } => {
                 // Check left node
-                if let LeafNode { keys, values } = left {
-                    assert_eq!(keys, vec![1, 2]);
-                    assert_eq!(values, vec!["one".to_string(), "two".to_string()]);
-                } else {
-                    panic!("Expected left node to be a LeafNode");
-                }
+                let LeafNode { keys, values } = left;
+                assert_eq!(keys, vec![1, 2]);
+                assert_eq!(values, vec!["one".to_string(), "two".to_string()]);
 
                 // Check right node
-                if let LeafNode { keys, values } = right {
-                    assert_eq!(keys, vec![3, 4, 5]);
-                    assert_eq!(
-                        values,
-                        vec!["three".to_string(), "four".to_string(), "five".to_string()]
-                    );
-                } else {
-                    panic!("Expected right node to be a LeafNode");
-                }
+                let LeafNode { keys, values } = right;
+                assert_eq!(keys, vec![3, 4, 5]);
+                assert_eq!(
+                    values,
+                    vec!["three".to_string(), "four".to_string(), "five".to_string()]
+                );
 
                 // Check separator key
                 assert_eq!(separator, 3);
@@ -129,12 +123,9 @@ mod node_operations_tests {
         match split_result {
             SplitResult::NoSplit(node) => {
                 // Check node is unchanged
-                if let LeafNode { keys, values } = node {
-                    assert_eq!(keys, vec![1, 2]);
-                    assert_eq!(values, vec!["one".to_string(), "two".to_string()]);
-                } else {
-                    panic!("Expected node to be a LeafNode");
-                }
+                let LeafNode { keys, values } = node;
+                assert_eq!(keys, vec![1, 2]);
+                assert_eq!(values, vec!["one".to_string(), "two".to_string()]);
             }
             SplitResult::Split { .. } => {
                 panic!("Expected node not to be split");
@@ -190,22 +181,16 @@ mod node_operations_tests {
                 separator,
             } => {
                 // Check left node
-                if let BranchNode { keys, children } = left {
-                    assert_eq!(keys.len(), 1);
-                    assert_eq!(keys[0], 3);
-                    assert_eq!(children.len(), 2);
-                } else {
-                    panic!("Expected left node to be a BranchNode");
-                }
+                let BranchNode { keys, children } = left;
+                assert_eq!(keys.len(), 1);
+                assert_eq!(keys[0], 3);
+                assert_eq!(children.len(), 2);
 
                 // Check right node
-                if let BranchNode { keys, children } = right {
-                    assert_eq!(keys.len(), 1);
-                    assert_eq!(keys[0], 9);
-                    assert_eq!(children.len(), 2);
-                } else {
-                    panic!("Expected right node to be a BranchNode");
-                }
+                let BranchNode { keys, children } = right;
+                assert_eq!(keys.len(), 1);
+                assert_eq!(keys[0], 9);
+                assert_eq!(children.len(), 2);
 
                 // Check separator key
                 assert_eq!(separator, 6);
@@ -250,13 +235,10 @@ mod node_operations_tests {
         match split_result {
             SplitResult::NoSplit(node) => {
                 // Check node is unchanged
-                if let BranchNode { keys, children } = node {
-                    assert_eq!(keys.len(), 1);
-                    assert_eq!(keys[0], 3);
-                    assert_eq!(children.len(), 2);
-                } else {
-                    panic!("Expected node to be a BranchNode");
-                }
+                let BranchNode { keys, children } = node;
+                assert_eq!(keys.len(), 1);
+                assert_eq!(keys[0], 3);
+                assert_eq!(children.len(), 2);
             }
             SplitResult::Split { .. } => {
                 panic!("Expected node not to be split");

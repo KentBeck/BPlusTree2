@@ -7,9 +7,7 @@ mod refactor_tests;
 
 #[cfg(test)]
 mod tests {
-    use super::super::bplus_tree_map::{
-        BPlusTreeMap, BranchNode, Entry, Iter, Keys, LeafNode, NodeVisitor, Values,
-    };
+    use super::super::bplus_tree_map::{BPlusTreeMap, BranchNode, Entry, LeafNode, NodeVisitor};
     use std::iter::FromIterator;
 
     #[test]
