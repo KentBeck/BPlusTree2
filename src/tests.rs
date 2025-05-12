@@ -134,4 +134,30 @@ mod tests {
         let removed_value = map.remove(&4);
         assert_eq!(removed_value, None);
     }
+
+    #[test]
+    fn test_checking_if_key_exists() {
+        let mut map = BPlusTreeMap::new();
+
+        // Check if keys exist in an empty map
+        assert_eq!(map.contains_key(&1), false);
+
+        // Insert some key-value pairs
+        map.insert(1, "one".to_string());
+        map.insert(2, "two".to_string());
+        map.insert(3, "three".to_string());
+
+        // Check if existing keys exist
+        assert_eq!(map.contains_key(&1), true);
+        assert_eq!(map.contains_key(&2), true);
+        assert_eq!(map.contains_key(&3), true);
+
+        // Check if non-existent keys exist
+        assert_eq!(map.contains_key(&0), false);
+        assert_eq!(map.contains_key(&4), false);
+
+        // Remove a key and check if it still exists
+        map.remove(&2);
+        assert_eq!(map.contains_key(&2), false);
+    }
 }

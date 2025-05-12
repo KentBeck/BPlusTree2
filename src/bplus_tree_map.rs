@@ -204,14 +204,16 @@ where
 
         None
     }
-}
 
-// Implement the remove method in a separate impl block to avoid any issues
-impl<K, V> BPlusTreeMap<K, V>
-where
-    K: Ord + Clone + Debug,
-    V: Clone + Debug,
-{
+    /// Checks if a key exists in the map
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        self.get(key).is_some()
+    }
+
     /// Removes a key-value pair from the map
     /// Returns the value if the key was present in the map
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
