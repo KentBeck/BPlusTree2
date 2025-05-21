@@ -10,6 +10,8 @@ use crate::bplus_tree_map::{BranchNode, LeafNode, NodeVisitorMut};
 /// must not outlive the borrow of `slice` and must not be used to create
 /// multiple mutable references simultaneously.
 unsafe fn ptr_at_mut<T>(slice: &mut [T], index: usize) -> *mut T {
+    // Explicitly use an unsafe block to satisfy the `unsafe_op_in_unsafe_fn`
+    // lint while calculating the raw pointer offset.
     unsafe { slice.as_mut_ptr().add(index) }
 }
 
