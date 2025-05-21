@@ -27,6 +27,18 @@ pub enum Node<K, V> {
     Branch(BranchNode<K, V>),
 }
 
+/// The type of node stored at the root of the tree. This is useful in tests
+/// and for debugging the tree structure.
+#[derive(Debug, PartialEq, Eq)]
+pub enum RootKind {
+    /// The tree is empty.
+    Empty,
+    /// The root is a leaf node.
+    Leaf,
+    /// The root is a branch node.
+    Branch,
+}
+
 // Main B+ tree map structure
 pub struct BPlusTreeMap<K, V> {
     root: Option<Node<K, V>>,
@@ -104,6 +116,16 @@ where
     /// Returns true if the map is empty
     pub fn is_empty(&self) -> bool {
         self.size == 0
+    }
+
+    /// Returns the type of node stored at the root of the tree. This is mainly
+    /// for testing and debugging purposes.
+    pub fn root_kind(&self) -> RootKind {
+        match &self.root {
+            None => RootKind::Empty,
+            Some(Node::Leaf(_)) => RootKind::Leaf,
+            Some(Node::Branch(_)) => RootKind::Branch,
+        }
     }
 
     /// Inserts a key-value pair into the map

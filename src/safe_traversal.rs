@@ -3,6 +3,18 @@ use std::marker::PhantomData;
 
 use crate::bplus_tree_map::{BranchNode, LeafNode, NodeVisitorMut};
 
+/// Returns a raw mutable pointer to the element at `index` from `slice`.
+///
+/// # Safety
+/// The caller must ensure that `index` is within bounds. The returned pointer
+/// must not outlive the borrow of `slice` and must not be used to create
+/// multiple mutable references simultaneously.
+unsafe fn ptr_at_mut<T>(slice: &mut [T], index: usize) -> *mut T {
+    // Explicitly use an unsafe block to satisfy the `unsafe_op_in_unsafe_fn`
+    // lint while calculating the raw pointer offset.
+    unsafe { slice.as_mut_ptr().add(index) }
+}
+
 /// A visitor that safely collects mutable references to values in a B+ tree
 pub struct SafeMutableVisitor<'a, K, V> {
     /// The collected entries (key clones and mutable references to values)
@@ -35,10 +47,8 @@ where
         // Safely collect mutable references to values with cloned keys
         for i in 0..leaf.keys.len() {
             let key = leaf.keys[i].clone();
-            // We need to use raw pointers to avoid multiple mutable borrows
-            // This is safe because we're only creating one mutable reference per value
             unsafe {
-                let value_ptr = &mut leaf.values[i] as *mut V;
+                let value_ptr = ptr_at_mut(&mut leaf.values, i);
                 self.entries.push((key, &mut *value_ptr));
             }
         }
@@ -82,9 +92,8 @@ where
         // Safely collect mutable references to values
         // We need to use raw pointers to avoid multiple mutable borrows
         for i in 0..leaf.values.len() {
-            // This is safe because we're only creating one mutable reference per value
             unsafe {
-                let value_ptr = &mut leaf.values[i] as *mut V;
+                let value_ptr = ptr_at_mut(&mut leaf.values, i);
                 self.values.push(&mut *value_ptr);
             }
         }
@@ -136,9 +145,8 @@ where
         // Find the key in the leaf node
         for i in 0..leaf.keys.len() {
             if leaf.keys[i].borrow() == self.key {
-                // This is safe because we're only creating one mutable reference
                 unsafe {
-                    let value_ptr = &mut leaf.values[i] as *mut V;
+                    let value_ptr = ptr_at_mut(&mut leaf.values, i);
                     self.value = Some(&mut *value_ptr);
                 }
                 break;
