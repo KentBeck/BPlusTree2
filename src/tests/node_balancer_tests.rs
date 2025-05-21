@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod node_balancer_tests {
+    use std::rc::Rc;
     use crate::bplus_tree_map::{BranchNode, LeafNode, Node};
     use crate::node_balancer::{BalanceResult, InsertionBalancer, NodeBalancer, RemovalBalancer};
+    use crate::config::BPlusTreeConfig;
     use crate::node_operations::NodeMerger;
 
     #[test]
@@ -19,7 +21,8 @@ mod node_balancer_tests {
         };
 
         // Create an insertion balancer with branching factor 3
-        let balancer = InsertionBalancer::new(3);
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 3 });
+        let balancer = InsertionBalancer::new(config);
 
         // Balance the node
         let balance_result = balancer.balance_node(Node::Leaf(leaf));
@@ -91,7 +94,8 @@ mod node_balancer_tests {
         };
 
         // Create an insertion balancer with branching factor 2
-        let balancer = InsertionBalancer::new(2);
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 2 });
+        let balancer = InsertionBalancer::new(config);
 
         // Balance the node
         let balance_result = balancer.balance_node(Node::Branch(branch));
@@ -139,7 +143,8 @@ mod node_balancer_tests {
         };
 
         // Create an insertion balancer with branching factor 3
-        let balancer = InsertionBalancer::new(3);
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 3 });
+        let balancer = InsertionBalancer::new(config);
 
         // Balance the node
         let balance_result = balancer.balance_node(Node::Leaf(leaf));
@@ -170,7 +175,8 @@ mod node_balancer_tests {
         };
 
         // Create a removal balancer with min keys = 2
-        let balancer = RemovalBalancer::new(4); // branching factor 4, min keys = 2
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 4 });
+        let balancer = RemovalBalancer::new(config);
 
         // Balance the nodes
         let balance_result = balancer.balance_nodes(
@@ -205,7 +211,8 @@ mod node_balancer_tests {
         };
 
         // Create a removal balancer with min keys = 2
-        let balancer = RemovalBalancer::new(4); // branching factor 4, min keys = 2
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 4 });
+        let balancer = RemovalBalancer::new(config);
 
         // Balance the nodes
         let balance_result = balancer.balance_nodes(
@@ -259,7 +266,8 @@ mod node_balancer_tests {
         };
 
         // Create a removal balancer with min keys = 2
-        let balancer = RemovalBalancer::new(5); // branching factor 5, min keys = 2
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 5 });
+        let balancer = RemovalBalancer::new(config);
 
         // Verify that the merger doesn't think these nodes need merging
         let merger = crate::node_operations::LeafNodeMerger::new(5);

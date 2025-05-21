@@ -5,7 +5,10 @@ use std::iter::FromIterator;
 use std::ops::Index;
 use std::vec;
 
+use std::rc::Rc;
+
 use crate::node_balancer::{BalanceResult, InsertionBalancer, NodeBalancer, RemovalBalancer};
+use crate::config::BPlusTreeConfig;
 
 // Node types for the B+ tree
 #[derive(Clone)]
@@ -27,10 +30,22 @@ pub enum Node<K, V> {
     Branch(BranchNode<K, V>),
 }
 
+/// The type of node stored at the root of the tree. This is useful in tests
+/// and for debugging the tree structure.
+#[derive(Debug, PartialEq, Eq)]
+pub enum RootKind {
+    /// The tree is empty.
+    Empty,
+    /// The root is a leaf node.
+    Leaf,
+    /// The root is a branch node.
+    Branch,
+}
+
 // Main B+ tree map structure
 pub struct BPlusTreeMap<K, V> {
     root: Option<Node<K, V>>,
-    branching_factor: usize,
+    config: Rc<BPlusTreeConfig>,
     size: usize,
     insertion_balancer: InsertionBalancer,
     removal_balancer: RemovalBalancer,
@@ -51,12 +66,13 @@ where
         if branching_factor < 2 {
             panic!("Branching factor must be at least 2");
         }
+        let config = Rc::new(BPlusTreeConfig { branching_factor });
         BPlusTreeMap {
             root: None,
-            branching_factor,
+            config: config.clone(),
             size: 0,
-            insertion_balancer: InsertionBalancer::new(branching_factor),
-            removal_balancer: RemovalBalancer::new(branching_factor),
+            insertion_balancer: InsertionBalancer::new(config.clone()),
+            removal_balancer: RemovalBalancer::new(config.clone()),
         }
     }
 
@@ -70,6 +86,7 @@ where
         if branching_factor < 2 {
             panic!("Branching factor must be at least 2");
         }
+        let config = Rc::new(BPlusTreeConfig { branching_factor });
 
         // Calculate the size
         let size = left_leaf.keys.len() + right_leaf.keys.len();
@@ -89,10 +106,10 @@ where
         // Create the tree map
         BPlusTreeMap {
             root: Some(Node::Branch(branch)),
-            branching_factor,
+            config: config.clone(),
             size,
-            insertion_balancer: InsertionBalancer::new(branching_factor),
-            removal_balancer: RemovalBalancer::new(branching_factor),
+            insertion_balancer: InsertionBalancer::new(config.clone()),
+            removal_balancer: RemovalBalancer::new(config.clone()),
         }
     }
 
@@ -104,6 +121,16 @@ where
     /// Returns true if the map is empty
     pub fn is_empty(&self) -> bool {
         self.size == 0
+    }
+
+    /// Returns the type of node stored at the root of the tree. This is mainly
+    /// for testing and debugging purposes.
+    pub fn root_kind(&self) -> RootKind {
+        match &self.root {
+            None => RootKind::Empty,
+            Some(Node::Leaf(_)) => RootKind::Leaf,
+            Some(Node::Branch(_)) => RootKind::Branch,
+        }
     }
 
     /// Inserts a key-value pair into the map
@@ -656,12 +683,13 @@ where
     // Helper method to collect all entries from the tree into a vector
     fn collect_entries(node: Node<K, V>, entries: &mut Vec<(K, V)>) {
         // Create a temporary BPlusTreeMap with the given node as root
+        let config = Rc::new(BPlusTreeConfig { branching_factor: 4 });
         let temp_map = BPlusTreeMap {
             root: Some(node),
-            branching_factor: 4, // Default value, doesn't matter for this operation
+            config: config.clone(),
             size: 0,             // Doesn't matter for this operation
-            insertion_balancer: InsertionBalancer::new(4), // Default value, doesn't matter for this operation
-            removal_balancer: RemovalBalancer::new(4), // Default value, doesn't matter for this operation
+            insertion_balancer: InsertionBalancer::new(config.clone()),
+            removal_balancer: RemovalBalancer::new(config.clone()),
         };
 
         // Use the traverse method to collect all entries
@@ -710,7 +738,7 @@ where
 {
     fn clone(&self) -> Self {
         // Create a new map with the same branching factor
-        let mut new_map = BPlusTreeMap::with_branching_factor(self.branching_factor);
+        let mut new_map = BPlusTreeMap::with_branching_factor(self.config.branching_factor);
 
         // Use the existing into_iter implementation to get all entries
         // We need to create a temporary copy to avoid consuming self

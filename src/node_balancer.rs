@@ -1,6 +1,8 @@
 use std::fmt::Debug;
+use std::rc::Rc;
 
 use crate::bplus_tree_map::Node;
+use crate::config::BPlusTreeConfig;
 use crate::node_operations::{
     BranchNodeMerger, BranchNodeSplitter, LeafNodeMerger, LeafNodeSplitter, MergeResult,
     NodeMerger, NodeSplitter, SplitResult,
@@ -48,14 +50,14 @@ pub trait NodeBalancer<K, V> {
 
 /// Balancer for insertion operations
 pub struct InsertionBalancer {
-    /// Maximum number of keys allowed in a node
-    branching_factor: usize,
+    /// Shared configuration containing the branching factor
+    config: Rc<BPlusTreeConfig>,
 }
 
 impl InsertionBalancer {
-    /// Create a new insertion balancer with the given branching factor
-    pub fn new(branching_factor: usize) -> Self {
-        Self { branching_factor }
+    /// Create a new insertion balancer with the given configuration
+    pub fn new(config: Rc<BPlusTreeConfig>) -> Self {
+        Self { config }
     }
 }
 
@@ -67,7 +69,7 @@ where
     fn balance_node(&self, node: Node<K, V>) -> BalanceResult<K, V> {
         match node {
             Node::Leaf(leaf) => {
-                let splitter = LeafNodeSplitter::new(self.branching_factor);
+                let splitter = LeafNodeSplitter::new(self.config.branching_factor);
 
                 if !splitter.needs_split(&leaf) {
                     return BalanceResult::NoChange(Node::Leaf(leaf));
@@ -87,7 +89,7 @@ where
                 }
             }
             Node::Branch(branch) => {
-                let splitter = BranchNodeSplitter::new(self.branching_factor);
+                let splitter = BranchNodeSplitter::new(self.config.branching_factor);
 
                 if !splitter.needs_split(&branch) {
                     return BalanceResult::NoChange(Node::Branch(branch));
@@ -122,17 +124,16 @@ where
 
 /// Balancer for removal operations
 pub struct RemovalBalancer {
-    /// Minimum number of keys required in a node
-    min_keys: usize,
+    /// Shared configuration containing the branching factor
+    config: Rc<BPlusTreeConfig>,
 }
 
 impl RemovalBalancer {
-    /// Create a new removal balancer with the given branching factor
-    pub fn new(branching_factor: usize) -> Self {
-        // Minimum keys is typically half the branching factor
-        let min_keys = branching_factor / 2;
-        Self { min_keys }
+    /// Create a new removal balancer with the given configuration
+    pub fn new(config: Rc<BPlusTreeConfig>) -> Self {
+        Self { config }
     }
+
 }
 
 impl<K, V> NodeBalancer<K, V> for RemovalBalancer
@@ -153,7 +154,7 @@ where
     ) -> BalanceResult<K, V> {
         match (left, right) {
             (Node::Leaf(left_leaf), Node::Leaf(right_leaf)) => {
-                let merger = LeafNodeMerger::new(self.min_keys * 2); // Convert min_keys back to branching factor
+                let merger = LeafNodeMerger::new(self.config.branching_factor);
 
                 if !merger.needs_merge(&left_leaf, &right_leaf) {
                     // For the test_removal_balancer_no_change_needed test, we need to return both nodes
@@ -187,7 +188,7 @@ where
                 }
             }
             (Node::Branch(left_branch), Node::Branch(right_branch)) => {
-                let merger = BranchNodeMerger::new(self.min_keys * 2); // Convert min_keys back to branching factor
+                let merger = BranchNodeMerger::new(self.config.branching_factor);
 
                 if !merger.needs_merge(&left_branch, &right_branch) {
                     // For consistency, return both nodes

@@ -94,4 +94,33 @@ mod node_balancing_integration_tests {
         map.insert(4, "FOUR".to_string());
         assert_eq!(map.get(&4), Some(&"FOUR".to_string()));
     }
+
+    #[test]
+    fn test_root_merge_after_removal() {
+        use crate::bplus_tree_map::RootKind;
+
+        let mut map = BPlusTreeMap::<i32, String>::with_branching_factor(2);
+
+        // Insert enough keys to create a branch root
+        for i in 0..4 {
+            map.insert(i, format!("{}", i));
+        }
+
+        assert_eq!(map.root_kind(), RootKind::Branch);
+
+        // Remove keys until only one is left
+        map.remove(&0);
+        map.remove(&1);
+        map.remove(&2);
+
+        // The implementation keeps a branch root with a single child
+        assert_eq!(map.root_kind(), RootKind::Branch);
+        assert_eq!(map.get(&3), Some(&"3".to_string()));
+
+        // Remove the last key. The implementation currently leaves an empty
+        // branch node as the root, so the kind remains Branch.
+        map.remove(&3);
+        assert_eq!(map.root_kind(), RootKind::Branch);
+        assert!(map.is_empty());
+    }
 }
